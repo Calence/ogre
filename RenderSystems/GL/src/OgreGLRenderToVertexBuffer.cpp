@@ -32,7 +32,7 @@ THE SOFTWARE.
 #include "OgreRenderable.h"
 #include "OgreSceneManager.h"
 #include "OgreRoot.h"
-#include "OgreRenderSystem.h"
+#include "OgreGLRenderSystem.h"
 #include "OgreGLSLLinkProgramManager.h"
 #include "OgreStringConverter.h"
 #include "OgreLogManager.h"
@@ -145,6 +145,8 @@ namespace Ogre {
 
         bindVerticesOutput(r2vbPass);
 
+        r2vbPass->_updateAutoParams(sceneMgr->_getAutoParamDataSource(), GPV_GLOBAL);
+
         RenderOperation renderOp;
         size_t targetBufferIndex;
         if (mResetRequested || mResetsEveryUpdate)
@@ -178,11 +180,11 @@ namespace Ogre {
 
         glBeginQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN_NV, mPrimitivesDrawnQuery);
 
-        RenderSystem* targetRenderSystem = Root::getSingleton().getRenderSystem();
+        GLRenderSystem* targetRenderSystem = static_cast<GLRenderSystem*>(Root::getSingleton().getRenderSystem());
         //Draw the object
-        targetRenderSystem->_setWorldMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setViewMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setProjectionMatrix(Matrix4::IDENTITY);
+        targetRenderSystem->setWorldMatrix(Matrix4::IDENTITY);
+        targetRenderSystem->setViewMatrix(Matrix4::IDENTITY);
+        targetRenderSystem->setProjectionMatrix(Matrix4::IDENTITY);
         if (r2vbPass->hasVertexProgram())
         {
             targetRenderSystem->bindGpuProgramParameters(GPT_VERTEX_PROGRAM, 

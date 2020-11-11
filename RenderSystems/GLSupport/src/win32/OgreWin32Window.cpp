@@ -48,23 +48,14 @@ namespace Ogre {
 
     #define _MAX_CLASS_NAME_ 128
 
-    Win32Window::Win32Window(Win32GLSupport &glsupport):
-        mGLSupport(glsupport),
-        mContext(0)
+    Win32Window::Win32Window(Win32GLSupport &glsupport): GLWindow(),
+        mGLSupport(glsupport)
     {
-        mIsFullScreen = false;
         mHWnd = 0;
         mGlrc = 0;
-        mIsExternal = false;
-        mIsExternalGLControl = false;
         mOwnsGLContext = true;
         mSizing = false;
-        mClosed = false;
-        mHidden = false;
-        mVSync = false;
-        mVSyncInterval = 1;
         mDisplayFrequency = 0;
-        mActive = false;
         mDeviceName = NULL;
         mWindowedWinStyle = 0;
         mFullscreenWinStyle = 0;
@@ -108,6 +99,7 @@ namespace Ogre {
         int left = -1; // Defaults to screen center
         int top = -1; // Defaults to screen center
         HWND parent = 0;
+        WNDPROC windowProc = DefWindowProc;
         String title = name;
         bool hidden = false;
         String border;
@@ -240,6 +232,8 @@ namespace Ogre {
             if ((opt = miscParams->find("parentWindowHandle")) != end)
                 parent = (HWND)StringConverter::parseSizeT(opt->second);
 
+            if ((opt = miscParams->find("windowProc")) != end)
+                windowProc = reinterpret_cast<WNDPROC>(StringConverter::parseSizeT(opt->second));
 
             // monitor index
             if ((opt = miscParams->find("monitorIndex")) != end)
@@ -380,7 +374,7 @@ namespace Ogre {
                 classStyle |= CS_DBLCLKS;
 
             // register class and create window
-            WNDCLASS wc = { classStyle, DefWindowProc, 0, 0, hInst,
+            WNDCLASS wc = { classStyle, windowProc, 0, 0, hInst,
                 LoadIcon(NULL, IDI_APPLICATION), LoadCursor(NULL, IDC_ARROW),
                 (HBRUSH)GetStockObject(BLACK_BRUSH), NULL, "OgreGLWindow" };
             RegisterClass(&wc);
@@ -713,11 +707,6 @@ namespace Ogre {
         return (mHWnd && !IsIconic(mHWnd));
     }
 
-    bool Win32Window::isClosed() const
-    {
-        return mClosed;
-    }
-
     void Win32Window::setHidden(bool hidden)
     {
         mHidden = hidden;
@@ -753,23 +742,6 @@ namespace Ogre {
             if (!wglMakeCurrent(old_hdc, old_context))
                 OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR, "wglMakeCurrent() failed", "Win32Window::setVSyncEnabled");
         }
-    }
-
-    void Win32Window::setVSyncInterval(unsigned int interval)
-    {
-        mVSyncInterval = interval;
-        if (mVSync)
-            setVSyncEnabled(true);
-    }
-
-    bool Win32Window::isVSyncEnabled() const
-    {
-        return mVSync;
-    }
-
-    unsigned int Win32Window::getVSyncInterval() const
-    {
-        return mVSyncInterval;
     }
 
     void Win32Window::reposition(int left, int top)
@@ -854,23 +826,6 @@ namespace Ogre {
       if (!mIsExternalGLControl) {
         SwapBuffers(mHDC);
       }
-    }
-
-    void Win32Window::copyContentsToMemory(const Box& src, const PixelBox &dst, FrameBuffer buffer)
-    {
-        if(src.right > mWidth || src.bottom > mHeight || src.front != 0 || src.back != 1
-        || dst.getWidth() != src.getWidth() || dst.getHeight() != src.getHeight() || dst.getDepth() != 1)
-        {
-            OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "Invalid box.", "Win32Window::copyContentsToMemory");
-        }
-
-        if (buffer == FB_AUTO)
-        {
-            buffer = mIsFullScreen? FB_FRONT : FB_BACK;
-        }
-
-        static_cast<GLRenderSystemCommon*>(Root::getSingleton().getRenderSystem())
-                ->_copyContentsToMemory(getViewport(0), src, dst, buffer);
     }
 
     void Win32Window::getCustomAttribute( const String& name, void* pData )

@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #include "OgrePrerequisites.h"
 #include "OgrePixelFormat.h"
-#include "OgreIteratorWrappers.h"
+#include "OgreIteratorWrapper.h"
 #include "OgreHeaderPrefix.h"
 
 namespace Ogre {
@@ -66,8 +66,8 @@ namespace Ogre {
             //Texture definition being a reference is determined by these two fields not being empty.
             String refCompName; //If a reference, the name of the compositor being referenced
             String refTexName;  //If a reference, the name of the texture in the compositor being referenced
-            size_t width;       // 0 means adapt to target width
-            size_t height;      // 0 means adapt to target height
+            uint32 width;       // 0 means adapt to target width
+            uint32 height;      // 0 means adapt to target height
             float widthFactor;  // multiple of target width to use (if width = 0)
             float heightFactor; // multiple of target height to use (if height = 0)
             PixelFormatList formatList; // more than one means MRT
@@ -98,7 +98,7 @@ namespace Ogre {
         /** Get a local texture definition.
         @deprecated use getTextureDefinitions()
         */
-        TextureDefinition *getTextureDefinition(size_t idx);
+        OGRE_DEPRECATED TextureDefinition *getTextureDefinition(size_t idx);
         
         /** Get a local texture definition with a specific name.
         */

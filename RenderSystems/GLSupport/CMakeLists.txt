@@ -62,8 +62,8 @@ elseif (APPLE)
 
   set(NATIVE_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/OSX 
-    ${OGRE_SOURCE_DIR}/OgreMain/include/OSX)
-  set(PLATFORM_LIBS ${Cocoa_LIBRARY_FWK})
+    ${PROJECT_SOURCE_DIR}/OgreMain/include/OSX)
+  set(PLATFORM_LIBS "-framework CoreGraphics" "-framework Foundation" "-framework AppKit")
 elseif (UNIX)
   if(OGRE_GLSUPPORT_USE_EGL)
     file(GLOB PLATFORM_HEADERS "include/EGL/X11/*.h" "include/EGL/*.h")
@@ -78,14 +78,15 @@ elseif (UNIX)
     file(GLOB PLATFORM_SOURCES "src/GLX/*.cpp")
 
     set(NATIVE_INCLUDES
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/GLX)
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/GLX
+        ${OPENGL_INCLUDE_DIR})
     
     set(PLATFORM_LIBS ${X11_LIBRARIES} ${X11_Xrandr_LIB} ${OPENGL_gl_LIBRARY})
   endif()
 endif ()
 
 file(GLOB GLSUPPORT_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
-set(GLSUPPORT_HEADERS ${GLSUPPORT_HEADERS} ${CMAKE_BINARY_DIR}/include/OgreGLSupportPrerequisites.h PARENT_SCOPE)
+set(GLSUPPORT_HEADERS ${GLSUPPORT_HEADERS} ${PROJECT_BINARY_DIR}/include/OgreGLSupportPrerequisites.h PARENT_SCOPE)
 
 file(GLOB GLSL_SOURCES src/GLSL/*.cpp)
 
@@ -98,10 +99,12 @@ add_library(OgreGLSupport STATIC
     ${GLSUPPORT_HEADERS} ${PLATFORM_HEADERS} ${PLATFORM_SOURCES} ${GLSL_SOURCES} 
     src/OgreGLRenderSystemCommon.cpp 
     src/OgreGLTextureCommon.cpp
+    src/OgreGLDepthBufferCommon.cpp
     src/OgreGLRenderTexture.cpp
     src/OgreGLHardwarePixelBufferCommon.cpp
     src/OgreGLUniformCache.cpp
     src/OgreGLVertexArrayObject.cpp
+    src/OgreGLWindow.cpp
 )
 target_link_libraries(OgreGLSupport PUBLIC OgreMain PRIVATE ${PLATFORM_LIBS})
 target_include_directories(OgreGLSupport PUBLIC 
@@ -112,10 +115,6 @@ target_include_directories(OgreGLSupport PUBLIC
 set_property(TARGET OgreGLSupport PROPERTY POSITION_INDEPENDENT_CODE ON)
 generate_export_header(OgreGLSupport 
     EXPORT_MACRO_NAME _OgreGLExport
-    EXPORT_FILE_NAME ${CMAKE_BINARY_DIR}/include/OgreGLSupportPrerequisites.h)
-
-if (APPLE)
-    set_target_properties(OgreGLSupport PROPERTIES LINK_FLAGS "-framework Cocoa -framework OpenGL")
-endif()
+    EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/OgreGLSupportPrerequisites.h)
 
 ogre_config_component(OgreGLSupport)

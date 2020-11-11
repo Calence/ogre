@@ -55,7 +55,7 @@ namespace Ogre {
 	{
 		assert(numVerts > 0);
 		D3D11HardwareVertexBuffer* vbuf = new D3D11HardwareVertexBuffer(
-			this, vertexSize, numVerts, usage, mlpD3DDevice, false, useShadowBuffer, false);
+			this, vertexSize, numVerts, usage, mlpD3DDevice, useShadowBuffer, false);
 		{
 			OGRE_LOCK_MUTEX(mVertexBuffersMutex);
 			mVertexBuffers.insert(vbuf);
@@ -70,7 +70,7 @@ namespace Ogre {
 	{
 		assert(numVerts > 0);
 		D3D11HardwareVertexBuffer* vbuf = new D3D11HardwareVertexBuffer(
-			this, vertexSize, numVerts, usage, mlpD3DDevice, false, useShadowBuffer, true);
+			this, vertexSize, numVerts, usage, mlpD3DDevice, useShadowBuffer, true);
 		{
 			OGRE_LOCK_MUTEX(mVertexBuffersMutex);
 			mVertexBuffers.insert(vbuf);
@@ -85,7 +85,7 @@ namespace Ogre {
 	{
 		assert(numIndexes > 0);
 		D3D11HardwareIndexBuffer* idx = new D3D11HardwareIndexBuffer(
-			this, itype, numIndexes, usage, mlpD3DDevice, false, useShadowBuffer);
+			this, itype, numIndexes, usage, mlpD3DDevice, useShadowBuffer);
 		{
 			OGRE_LOCK_MUTEX(mIndexBuffersMutex);
 			mIndexBuffers.insert(idx);
@@ -137,22 +137,8 @@ namespace Ogre {
 		return HardwareUniformBufferSharedPtr(uni);
 	}
 	//-----------------------------------------------------------------------
-	HardwareCounterBufferSharedPtr
-		D3D11HardwareBufferManager::createCounterBuffer(size_t sizeBytes,
-		HardwareBuffer::Usage usage, bool useShadowBuffer, const String& name)
-	{
-		OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR,
-			"*** not implemented ***",
-			"D3D11HardwareBufferManager::createCounterBuffer");
-	}
-	//-----------------------------------------------------------------------
 	VertexDeclaration* D3D11HardwareBufferManager::createVertexDeclarationImpl(void)
 	{
 		return new D3D11VertexDeclaration(mlpD3DDevice);
-	}
-	//-----------------------------------------------------------------------
-	void D3D11HardwareBufferManager::destroyVertexDeclarationImpl(VertexDeclaration* decl)
-	{
-		delete decl;
 	}
 }

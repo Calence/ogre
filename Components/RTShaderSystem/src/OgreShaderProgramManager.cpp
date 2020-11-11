@@ -65,70 +65,29 @@ ProgramManager::~ProgramManager()
 }
 
 //-----------------------------------------------------------------------------
-void ProgramManager::acquirePrograms(Pass* pass, TargetRenderState* renderState)
+void ProgramManager::releasePrograms(const ProgramSet* programSet)
 {
-    // Create the CPU programs.
-    if (false == renderState->createCpuPrograms())
+    GpuProgramPtr vsProgram(programSet->getGpuProgram(GPT_VERTEX_PROGRAM));
+    GpuProgramPtr psProgram(programSet->getGpuProgram(GPT_FRAGMENT_PROGRAM));
+
+    GpuProgramsMapIterator itVsGpuProgram = !vsProgram ? mVertexShaderMap.end() : mVertexShaderMap.find(vsProgram->getName());
+    GpuProgramsMapIterator itFsGpuProgram = !psProgram ? mFragmentShaderMap.end() : mFragmentShaderMap.find(psProgram->getName());
+
+    if (itVsGpuProgram != mVertexShaderMap.end())
     {
-        OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS, 
-            "Could not apply render state ", 
-            "ProgramManager::acquireGpuPrograms" ); 
-    }   
-
-    ProgramSet* programSet = renderState->getProgramSet();
-
-    // Create the GPU programs.
-    if (false == createGpuPrograms(programSet))
-    {
-        OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS, 
-            "Could not create gpu programs from render state ", 
-                        "ProgramManager::acquireGpuPrograms" );
-    }   
-
-    // Bind the created GPU programs to the target pass.
-    pass->setVertexProgram(programSet->getGpuProgram(GPT_VERTEX_PROGRAM)->getName());
-    pass->setFragmentProgram(programSet->getGpuProgram(GPT_FRAGMENT_PROGRAM)->getName());
-
-    // Bind uniform parameters to pass parameters.
-    bindUniformParameters(programSet->getCpuProgram(GPT_VERTEX_PROGRAM), pass->getVertexProgramParameters());
-    bindUniformParameters(programSet->getCpuProgram(GPT_FRAGMENT_PROGRAM), pass->getFragmentProgramParameters());
-
-}
-
-//-----------------------------------------------------------------------------
-void ProgramManager::releasePrograms(Pass* pass, TargetRenderState* renderState)
-{
-    ProgramSet* programSet = renderState->getProgramSet();
-
-    if (programSet != NULL)
-    {
-        pass->setVertexProgram(BLANKSTRING);
-        pass->setFragmentProgram(BLANKSTRING);
-
-        GpuProgramPtr vsProgram(programSet->getGpuProgram(GPT_VERTEX_PROGRAM));
-        GpuProgramPtr psProgram(programSet->getGpuProgram(GPT_FRAGMENT_PROGRAM));
-
-        GpuProgramsMapIterator itVsGpuProgram = !vsProgram ? mVertexShaderMap.end() : mVertexShaderMap.find(vsProgram->getName());
-        GpuProgramsMapIterator itFsGpuProgram = !psProgram ? mFragmentShaderMap.end() : mFragmentShaderMap.find(psProgram->getName());
-
-        renderState->destroyProgramSet();
-
-        if (itVsGpuProgram != mVertexShaderMap.end())
+        if (itVsGpuProgram->second.use_count() == ResourceGroupManager::RESOURCE_SYSTEM_NUM_REFERENCE_COUNTS + 1)
         {
-            if (itVsGpuProgram->second.use_count() == ResourceGroupManager::RESOURCE_SYSTEM_NUM_REFERENCE_COUNTS + 1)
-            {
-                destroyGpuProgram(itVsGpuProgram->second);
-                mVertexShaderMap.erase(itVsGpuProgram);
-            }
+            destroyGpuProgram(itVsGpuProgram->second);
+            mVertexShaderMap.erase(itVsGpuProgram);
         }
+    }
 
-        if (itFsGpuProgram != mFragmentShaderMap.end())
+    if (itFsGpuProgram != mFragmentShaderMap.end())
+    {
+        if (itFsGpuProgram->second.use_count() == ResourceGroupManager::RESOURCE_SYSTEM_NUM_REFERENCE_COUNTS + 1)
         {
-            if (itFsGpuProgram->second.use_count() == ResourceGroupManager::RESOURCE_SYSTEM_NUM_REFERENCE_COUNTS + 1)
-            {
-                destroyGpuProgram(itFsGpuProgram->second);
-                mFragmentShaderMap.erase(itFsGpuProgram);
-            }
+            destroyGpuProgram(itFsGpuProgram->second);
+            mFragmentShaderMap.erase(itFsGpuProgram);
         }
     }
 }
@@ -237,30 +196,7 @@ void ProgramManager::destroyProgramWriters()
 }
 
 //-----------------------------------------------------------------------------
-Program* ProgramManager::createCpuProgram(GpuProgramType type)
-{
-    Program* shaderProgram = OGRE_NEW Program(type);
-
-    mCpuProgramsList.insert(shaderProgram);
-
-    return shaderProgram;
-}
-
-
-//-----------------------------------------------------------------------------
-void ProgramManager::destroyCpuProgram(Program* shaderProgram)
-{
-    ProgramListIterator it    = mCpuProgramsList.find(shaderProgram);
-    
-    if (it != mCpuProgramsList.end())
-    {           
-        OGRE_DELETE *it;            
-        mCpuProgramsList.erase(it); 
-    }           
-}
-
-//-----------------------------------------------------------------------------
-bool ProgramManager::createGpuPrograms(ProgramSet* programSet)
+void ProgramManager::createGpuPrograms(ProgramSet* programSet)
 {
     // Before we start we need to make sure that the pixel shader input
     //  parameters are the same as the vertex output, this required by 
@@ -300,13 +236,10 @@ bool ProgramManager::createGpuPrograms(ProgramSet* programSet)
     }
 
     programProcessor = itProcessor->second;
-
-    bool success;
     
     // Call the pre creation of GPU programs method.
-    success = programProcessor->preCreateGpuPrograms(programSet);
-    if (success == false)   
-        return false;   
+    if (!programProcessor->preCreateGpuPrograms(programSet))
+        OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR, "preCreateGpuPrograms failed");
     
     // Create the shader programs
     for(auto type : {GPT_VERTEX_PROGRAM, GPT_FRAGMENT_PROGRAM})
@@ -315,10 +248,9 @@ bool ProgramManager::createGpuPrograms(ProgramSet* programSet)
                                            ShaderGenerator::getSingleton().getShaderProfiles(type),
                                            ShaderGenerator::getSingleton().getShaderProfilesList(type),
                                            ShaderGenerator::getSingleton().getShaderCachePath());
-        if(!gpuProgram)
-            return false;
 
-        programSet->setGpuProgram(gpuProgram, type);
+        OgreAssert(gpuProgram, "gpu program could not be created");
+        programSet->setGpuProgram(gpuProgram);
     }
 
     //update flags
@@ -326,22 +258,8 @@ bool ProgramManager::createGpuPrograms(ProgramSet* programSet)
         programSet->getCpuProgram(GPT_VERTEX_PROGRAM)->getSkeletalAnimationIncluded());
 
     // Call the post creation of GPU programs method.
-    return programProcessor->postCreateGpuPrograms(programSet);
-}
-
-
-//-----------------------------------------------------------------------------
-void ProgramManager::bindUniformParameters(Program* pCpuProgram, const GpuProgramParametersSharedPtr& passParams)
-{
-    const UniformParameterList& progParams = pCpuProgram->getParameters();
-    UniformParameterConstIterator itParams = progParams.begin();
-    UniformParameterConstIterator itParamsEnd = progParams.end();
-
-    // Bind each uniform parameter to its GPU parameter.
-    for (; itParams != itParamsEnd; ++itParams)
-    {           
-        (*itParams)->bind(passParams);                  
-    }
+    if(!programProcessor->postCreateGpuPrograms(programSet))
+        OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR, "postCreateGpuPrograms failed");
 }
 
 //-----------------------------------------------------------------------------
@@ -359,7 +277,7 @@ GpuProgramPtr ProgramManager::createGpuProgram(Program* shaderProgram,
     String source = sourceCodeStringStream.str();
 
     // Generate program name.
-    String programName = generateHash(source);
+    String programName = generateHash(source, shaderProgram->getPreprocessorDefines());
 
     if (shaderProgram->getType() == GPT_VERTEX_PROGRAM)
     {
@@ -415,7 +333,7 @@ GpuProgramPtr ProgramManager::createGpuProgram(Program* shaderProgram,
     }
 
     pGpuProgram->setSource(source);
-
+    pGpuProgram->setPreprocessorDefines(shaderProgram->getPreprocessorDefines());
     pGpuProgram->setParameter("entry_point", shaderProgram->getEntryPointFunction()->getName());
 
     if (language == "hlsl")
@@ -464,11 +382,12 @@ GpuProgramPtr ProgramManager::createGpuProgram(Program* shaderProgram,
 
 
 //-----------------------------------------------------------------------------
-String ProgramManager::generateHash(const String& programString)
+String ProgramManager::generateHash(const String& programString, const String& defines)
 {
     //Different programs must have unique hash values.
     uint32_t hash[4];
-    MurmurHash3_128(programString.c_str(), programString.size(), 0, hash);
+    uint32_t seed = FastHash(defines.c_str(), defines.size());
+    MurmurHash3_128(programString.c_str(), programString.size(), seed, hash);
 
     //Generate the string
     return StringUtil::format("%08x%08x%08x%08x", hash[0], hash[1], hash[2], hash[3]);
@@ -520,36 +439,8 @@ void ProgramManager::synchronizePixelnToBeVertexOut( ProgramSet* programSet )
 
     // first find the vertex shader
     ShaderFunctionConstIterator itFunction ;
-    Function* vertexMain = NULL;
-    Function* pixelMain = NULL;
-
-    // find vertex shader main
-    {
-        const ShaderFunctionList& functionList = vsProgram->getFunctions();
-        for (itFunction=functionList.begin(); itFunction != functionList.end(); ++itFunction)
-        {
-            Function* curFunction = *itFunction;
-            if (curFunction->getFunctionType() == Function::FFT_VS_MAIN)
-            {
-                vertexMain = curFunction;
-                break;
-            }
-        }
-    }
-
-    // find pixel shader main
-    {
-        const ShaderFunctionList& functionList = psProgram->getFunctions();
-        for (itFunction=functionList.begin(); itFunction != functionList.end(); ++itFunction)
-        {
-            Function* curFunction = *itFunction;
-            if (curFunction->getFunctionType() == Function::FFT_PS_MAIN)
-            {
-                pixelMain = curFunction;
-                break;
-            }
-        }
-    }
+    Function* vertexMain = vsProgram->getEntryPointFunction();
+    Function* pixelMain = psProgram->getEntryPointFunction();;
 
     if(pixelMain)
     {
@@ -573,7 +464,7 @@ void ProgramManager::synchronizePixelnToBeVertexOut( ProgramSet* programSet )
             for (it=outParams.begin(); it != outParams.end(); ++it)
             {
                 ParameterPtr curOutParemter = *it;
-                ParameterPtr paramToAdd = Function::getParameterBySemantic(
+                ParameterPtr paramToAdd = Function::_getParameterBySemantic(
                     pixelOriginalInParams, 
                     curOutParemter->getSemantic(), 
                     curOutParemter->getIndex());

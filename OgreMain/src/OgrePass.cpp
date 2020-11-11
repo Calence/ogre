@@ -126,17 +126,7 @@ namespace Ogre {
         , mEmissive(ColourValue::Black)
         , mShininess(0)
         , mTracking(TVC_NONE)
-        , mSourceBlendFactor(SBF_ONE)
-        , mDestBlendFactor(SBF_ZERO)
-        , mSourceBlendFactorAlpha(SBF_ONE)
-        , mDestBlendFactorAlpha(SBF_ZERO)
-        , mBlendOperation(SBO_ADD)
-        , mAlphaBlendOperation(SBO_ADD)
         , mHashDirtyQueued(false)
-        , mColourWriteR(true)
-        , mColourWriteG(true)
-        , mColourWriteB(true)
-        , mColourWriteA(true)
         , mDepthCheck(true)
         , mDepthWrite(true)
         , mAlphaToCoverageEnabled(false)
@@ -176,14 +166,11 @@ namespace Ogre {
         , mFogDensity(0.001)
         , mPassIterationCount(1)
         , mLineWidth(1.0f)
-        , mPointSize(1.0f)
         , mPointMinSize(0.0f)
         , mPointMaxSize(0.0f)
+        , mPointAttenution(1.0f, 1.0f, 0.0f, 0.0f)
         , mIlluminationStage(IS_UNKNOWN)
     {
-        mPointAttenuationCoeffs[0] = 1.0f;
-        mPointAttenuationCoeffs[1] = mPointAttenuationCoeffs[2] = 0.0f;
-
         // init the hash inline
         _recalculateHash();
    }
@@ -222,12 +209,7 @@ namespace Ogre {
         mFogDensity = oth.mFogDensity;
 
         // Default blending (overwrite)
-        mSourceBlendFactor = oth.mSourceBlendFactor;
-        mDestBlendFactor = oth.mDestBlendFactor;
-        mSourceBlendFactorAlpha = oth.mSourceBlendFactorAlpha;
-        mDestBlendFactorAlpha = oth.mDestBlendFactorAlpha;
-        mBlendOperation = oth.mBlendOperation;
-        mAlphaBlendOperation = oth.mAlphaBlendOperation;
+        mBlendState = oth.mBlendState;
 
         mDepthCheck = oth.mDepthCheck;
         mDepthWrite = oth.mDepthWrite;
@@ -236,10 +218,6 @@ namespace Ogre {
         mAlphaToCoverageEnabled = oth.mAlphaToCoverageEnabled;
         mTransparentSorting = oth.mTransparentSorting;
         mTransparentSortingForced = oth.mTransparentSortingForced;
-        mColourWriteR = oth.mColourWriteR;
-        mColourWriteG = oth.mColourWriteG;
-        mColourWriteB = oth.mColourWriteB;
-        mColourWriteA = oth.mColourWriteA;
         mDepthFunc = oth.mDepthFunc;
         mDepthBiasConstant = oth.mDepthBiasConstant;
         mDepthBiasSlopeScale = oth.mDepthBiasSlopeScale;
@@ -259,12 +237,11 @@ namespace Ogre {
         mPolygonModeOverrideable = oth.mPolygonModeOverrideable;
         mPassIterationCount = oth.mPassIterationCount;
         mLineWidth = oth.mLineWidth;
-        mPointSize = oth.mPointSize;
+        mPointAttenution = oth.mPointAttenution;
         mPointMinSize = oth.mPointMinSize;
         mPointMaxSize = oth.mPointMaxSize;
         mPointSpritesEnabled = oth.mPointSpritesEnabled;
         mPointAttenuationEnabled = oth.mPointAttenuationEnabled;
-        memcpy(mPointAttenuationCoeffs, oth.mPointAttenuationCoeffs, sizeof(Real)*3);
         mShadowContentTypeLookup = oth.mShadowContentTypeLookup;
         mContentTypeLookupBuilt = oth.mContentTypeLookupBuilt;
         mLightScissoring = oth.mLightScissoring;
@@ -358,11 +335,6 @@ namespace Ogre {
         mName = name;
     }
     //-----------------------------------------------------------------------
-    void Pass::setPointSize(Real ps)
-    {
-        mPointSize = ps;
-    }
-    //-----------------------------------------------------------------------
     void Pass::setPointSpritesEnabled(bool enabled)
     {
         mPointSpritesEnabled = enabled;
@@ -373,33 +345,17 @@ namespace Ogre {
         return mPointSpritesEnabled;
     }
     //-----------------------------------------------------------------------
-    void Pass::setPointAttenuation(bool enabled,
-        Real constant, Real linear, Real quadratic)
+    void Pass::setPointAttenuation(bool enabled, float constant, float linear, float quadratic)
     {
         mPointAttenuationEnabled = enabled;
-        mPointAttenuationCoeffs[0] = constant;
-        mPointAttenuationCoeffs[1] = linear;
-        mPointAttenuationCoeffs[2] = quadratic;
+        mPointAttenution[1] = enabled ? constant : 1.0f;
+        mPointAttenution[2] = enabled ? linear : 0.0f;
+        mPointAttenution[3] = enabled ? quadratic : 0.0f;
     }
     //-----------------------------------------------------------------------
     bool Pass::isPointAttenuationEnabled(void) const
     {
         return mPointAttenuationEnabled;
-    }
-    //-----------------------------------------------------------------------
-    Real Pass::getPointAttenuationConstant(void) const
-    {
-        return mPointAttenuationCoeffs[0];
-    }
-    //-----------------------------------------------------------------------
-    Real Pass::getPointAttenuationLinear(void) const
-    {
-        return mPointAttenuationCoeffs[1];
-    }
-    //-----------------------------------------------------------------------
-    Real Pass::getPointAttenuationQuadratic(void) const
-    {
-        return mPointAttenuationCoeffs[2];
     }
     //-----------------------------------------------------------------------
     void Pass::setPointMinSize(Real min)
@@ -484,11 +440,6 @@ namespace Ogre {
         mTracking = tracking;
     }
     //-----------------------------------------------------------------------
-    Real Pass::getPointSize(void) const
-    {
-        return mPointSize;
-    }
-    //-----------------------------------------------------------------------
     const ColourValue& Pass::getAmbient(void) const
     {
         return mAmbient;
@@ -561,14 +512,15 @@ namespace Ogre {
                     // This sprintf replaced a call to StringConverter::toString for performance reasons
                     state->setName( StringUtil::format("%lx", static_cast<long>(idx)));
                     
+                    OGRE_IGNORE_DEPRECATED_BEGIN
                     /** since the name was never set and a default one has been made, clear the alias name
                      so that when the texture unit name is set by the user, the alias name will be set to
                      that name
                     */
                     state->setTextureNameAlias(BLANKSTRING);
+                    OGRE_IGNORE_DEPRECATED_END
                 }
-                // Needs recompilation
-                mParent->_notifyNeedsRecompile();
+                _notifyNeedsRecompile();
                 _dirtyHash();
             }
             else
@@ -652,11 +604,7 @@ namespace Ogre {
         TextureUnitStates::iterator i = mTextureUnitStates.begin() + index;
         OGRE_DELETE *i;
         mTextureUnitStates.erase(i);
-        if (!mQueuedForDeletion)
-        {
-            // Needs recompilation
-            mParent->_notifyNeedsRecompile();
-        }
+        _notifyNeedsRecompile();
         _dirtyHash();
         mContentTypeLookupBuilt = false;
     }
@@ -671,11 +619,7 @@ namespace Ogre {
             OGRE_DELETE *i;
         }
         mTextureUnitStates.clear();
-        if (!mQueuedForDeletion)
-        {
-            // Needs recompilation
-            mParent->_notifyNeedsRecompile();
-        }
+        _notifyNeedsRecompile();
         _dirtyHash();
         mContentTypeLookupBuilt = false;
     }
@@ -745,38 +689,38 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     void Pass::setSceneBlending(SceneBlendFactor sourceFactor, SceneBlendFactor destFactor)
     {
-        mSourceBlendFactor = sourceFactor;
-        mDestBlendFactor = destFactor;
-        mSourceBlendFactorAlpha = sourceFactor;
-        mDestBlendFactorAlpha = destFactor;
+        mBlendState.sourceFactor = sourceFactor;
+        mBlendState.sourceFactorAlpha = sourceFactor;
+        mBlendState.destFactor = destFactor;
+        mBlendState.destFactorAlpha = destFactor;
     }
     //-----------------------------------------------------------------------
     void Pass::setSeparateSceneBlending( const SceneBlendFactor sourceFactor, const SceneBlendFactor destFactor, const SceneBlendFactor sourceFactorAlpha, const SceneBlendFactor destFactorAlpha )
     {
-        mSourceBlendFactor = sourceFactor;
-        mDestBlendFactor = destFactor;
-        mSourceBlendFactorAlpha = sourceFactorAlpha;
-        mDestBlendFactorAlpha = destFactorAlpha;
+        mBlendState.sourceFactor = sourceFactor;
+        mBlendState.destFactor = destFactor;
+        mBlendState.sourceFactorAlpha = sourceFactorAlpha;
+        mBlendState.destFactorAlpha = destFactorAlpha;
     }
     //-----------------------------------------------------------------------
     SceneBlendFactor Pass::getSourceBlendFactor(void) const
     {
-        return mSourceBlendFactor;
+        return mBlendState.sourceFactor;
     }
     //-----------------------------------------------------------------------
     SceneBlendFactor Pass::getDestBlendFactor(void) const
     {
-        return mDestBlendFactor;
+        return mBlendState.destFactor;
     }
     //-----------------------------------------------------------------------
     SceneBlendFactor Pass::getSourceBlendFactorAlpha(void) const
     {
-        return mSourceBlendFactorAlpha;
+        return mBlendState.sourceFactorAlpha ;
     }
     //-----------------------------------------------------------------------
     SceneBlendFactor Pass::getDestBlendFactorAlpha(void) const
     {
-        return mDestBlendFactorAlpha;
+        return mBlendState.destFactorAlpha;
     }
     //-----------------------------------------------------------------------
     bool Pass::hasSeparateSceneBlending() const
@@ -786,24 +730,24 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     void Pass::setSceneBlendingOperation(SceneBlendOperation op)
     {
-        mBlendOperation = op;
-        mAlphaBlendOperation = op;
+        mBlendState.operation = op;
+        mBlendState.alphaOperation = op;
     }
     //-----------------------------------------------------------------------
     void Pass::setSeparateSceneBlendingOperation(SceneBlendOperation op, SceneBlendOperation alphaOp)
     {
-        mBlendOperation = op;
-        mAlphaBlendOperation = alphaOp;
+        mBlendState.operation = op;
+        mBlendState.alphaOperation = alphaOp;
     }
     //-----------------------------------------------------------------------
     SceneBlendOperation Pass::getSceneBlendingOperation() const
     {
-        return mBlendOperation;
+        return mBlendState.operation;
     }
     //-----------------------------------------------------------------------
     SceneBlendOperation Pass::getSceneBlendingOperationAlpha() const
     {
-        return mAlphaBlendOperation;
+        return mBlendState.alphaOperation;
     }
     //-----------------------------------------------------------------------
     bool Pass::hasSeparateSceneBlendingOperations() const
@@ -814,11 +758,11 @@ namespace Ogre {
     bool Pass::isTransparent(void) const
     {
         // Transparent if any of the destination colour is taken into account
-        if (mDestBlendFactor == SBF_ZERO &&
-            mSourceBlendFactor != SBF_DEST_COLOUR &&
-            mSourceBlendFactor != SBF_ONE_MINUS_DEST_COLOUR &&
-            mSourceBlendFactor != SBF_DEST_ALPHA &&
-            mSourceBlendFactor != SBF_ONE_MINUS_DEST_ALPHA)
+        if (mBlendState.destFactor == SBF_ZERO &&
+            mBlendState.sourceFactor != SBF_DEST_COLOUR &&
+            mBlendState.sourceFactor != SBF_ONE_MINUS_DEST_COLOUR &&
+            mBlendState.sourceFactor != SBF_DEST_ALPHA &&
+            mBlendState.sourceFactor != SBF_ONE_MINUS_DEST_ALPHA)
         {
             return false;
         }
@@ -902,32 +846,33 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     void Pass::setColourWriteEnabled(bool enabled)
     {
-        mColourWriteR = enabled;
-        mColourWriteG = enabled;
-        mColourWriteB = enabled;
-        mColourWriteA = enabled;
+        mBlendState.writeR = enabled;
+        mBlendState.writeG = enabled;
+        mBlendState.writeB = enabled;
+        mBlendState.writeA = enabled;
     }
     //-----------------------------------------------------------------------
     bool Pass::getColourWriteEnabled() const
     {
-        return mColourWriteR || mColourWriteG || mColourWriteB || mColourWriteA;
+        return mBlendState.writeR || mBlendState.writeG || mBlendState.writeB ||
+               mBlendState.writeA;
     }
     //-----------------------------------------------------------------------
 
     void Pass::setColourWriteEnabled(bool red, bool green, bool blue, bool alpha)
     {
-        mColourWriteR = red;
-        mColourWriteG = green;
-        mColourWriteB = blue;
-        mColourWriteA = alpha;
+        mBlendState.writeR = red;
+        mBlendState.writeG = green;
+        mBlendState.writeB = blue;
+        mBlendState.writeA = alpha;
     }
     //-----------------------------------------------------------------------
     void Pass::getColourWriteEnabled(bool& red, bool& green, bool& blue, bool& alpha) const
     {
-        red = mColourWriteR;
-        green = mColourWriteG;
-        blue = mColourWriteB;
-        alpha = mColourWriteA;
+        red = mBlendState.writeR;
+        green = mBlendState.writeG;
+        blue = mBlendState.writeB;
+        alpha = mBlendState.writeA;
     }
     //-----------------------------------------------------------------------
     void Pass::setCullingMode( CullingMode mode)
@@ -1249,8 +1194,7 @@ namespace Ogre {
         if (!programUsage)
         {
             OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
-                "This pass does not have this program type assigned!",
-                __FUNCTION__);
+                "This pass does not have this program type assigned!");
         }
         programUsage->setParameters(params);
     }
@@ -1279,7 +1223,7 @@ namespace Ogre {
             programUsage->setProgram(program, resetParams);
         }
         // Needs recompilation
-        mParent->_notifyNeedsRecompile();
+        _notifyNeedsRecompile();
 
         if( Pass::getHashFunction() == Pass::getBuiltinHashFunction( Pass::MIN_GPU_PROGRAM_CHANGE ) )
         {
@@ -1356,8 +1300,7 @@ namespace Ogre {
         if (!programUsage)
         {
             OGRE_EXCEPT (Exception::ERR_INVALIDPARAMS,
-                "This pass does not have this program type assigned!",
-                __FUNCTION__);
+                "This pass does not have this program type assigned!");
         }
         return programUsage->getParameters();
     }
@@ -1472,6 +1415,9 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     void Pass::_dirtyHash(void)
     {
+        if (mQueuedForDeletion)
+            return;
+
         Material* mat = mParent->getParent();
         if (mat->isLoading() || mat->isLoaded())
         {
@@ -1494,7 +1440,8 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     void Pass::_notifyNeedsRecompile(void)
     {
-        mParent->_notifyNeedsRecompile();
+        if (!mQueuedForDeletion)
+            mParent->_notifyNeedsRecompile();
     }
     //-----------------------------------------------------------------------
     void Pass::setTextureFiltering(TextureFilterOptions filterType)
@@ -1613,8 +1560,7 @@ namespace Ogre {
             }
             mShadowCasterVertexProgramUsage->setProgramName(name);
         }
-        // Needs recompilation
-        mParent->_notifyNeedsRecompile();
+        _notifyNeedsRecompile();
     }
     //-----------------------------------------------------------------------
     void Pass::setShadowCasterVertexProgramParameters(GpuProgramParametersSharedPtr params)
@@ -1667,8 +1613,7 @@ namespace Ogre {
             }
             mShadowCasterFragmentProgramUsage->setProgramName(name);
         }
-        // Needs recompilation
-        mParent->_notifyNeedsRecompile();
+        _notifyNeedsRecompile();
     }
     //-----------------------------------------------------------------------
     void Pass::setShadowCasterFragmentProgramParameters(GpuProgramParametersSharedPtr params)
@@ -1727,8 +1672,7 @@ namespace Ogre {
             }
             mShadowReceiverVertexProgramUsage->setProgramName(name);
         }
-        // Needs recompilation
-        mParent->_notifyNeedsRecompile();
+        _notifyNeedsRecompile();
     }
     //-----------------------------------------------------------------------
     void Pass::setShadowReceiverVertexProgramParameters(GpuProgramParametersSharedPtr params)
@@ -1781,8 +1725,7 @@ namespace Ogre {
             }
             mShadowReceiverFragmentProgramUsage->setProgramName(name);
         }
-        // Needs recompilation
-        mParent->_notifyNeedsRecompile();
+        _notifyNeedsRecompile();
     }
     //-----------------------------------------------------------------------
     void Pass::setShadowReceiverFragmentProgramParameters(GpuProgramParametersSharedPtr params)
@@ -1835,8 +1778,10 @@ namespace Ogre {
 
         for (i = mTextureUnitStates.begin(); i != iend; ++i)
         {
+            OGRE_IGNORE_DEPRECATED_BEGIN
             if ((*i)->applyTextureAliases(aliasList, apply))
                 testResult = true;
+            OGRE_IGNORE_DEPRECATED_END
         }
 
         return testResult;

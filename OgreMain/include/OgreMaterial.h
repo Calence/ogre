@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "OgrePrerequisites.h"
 
 #include "OgreResource.h"
-#include "OgreIteratorWrappers.h"
+#include "OgreIteratorWrapper.h"
 #include "OgreCommon.h"
 #include "OgreColourValue.h"
 #include "OgreBlendMode.h"
@@ -50,8 +50,8 @@ namespace Ogre {
     *  @{
     */
     /** Class encapsulates rendering properties of an object.
-    @remarks
-    Ogre's material class encapsulates ALL aspects of the visual appearance,
+
+    %Ogre's material class encapsulates *all* aspects of the visual appearance,
     of an object. It also includes other flags which 
     might not be traditionally thought of as material properties such as 
     culling modes and depth buffer settings, but these affect the 
@@ -60,7 +60,7 @@ namespace Ogre {
     different to Direct3D which treats a material as just the colour 
     components (diffuse, specular) and not texture maps etc. An Ogre 
     Material can be thought of as equivalent to a 'Shader'.
-    @par
+
     A Material can be rendered in multiple different ways depending on the
     hardware available. You may configure a Material to use high-complexity
     fragment shaders, but these won't work on every card; therefore a Technique
@@ -68,8 +68,8 @@ namespace Ogre {
     to create fallback techniques with lower hardware requirements if you decide to
     use advanced features. In addition, you also might want lower-detail techniques
     for distant geometry.
-    @par
-    Each technique can be made up of multiple passes. A fixed-function pass
+
+    Each Technique can be made up of multiple passes. A fixed-function Pass
     may combine multiple texture layers using multitexturing, but Ogre can 
     break that into multiple passes automatically if the active card cannot
     handle that many simultaneous textures. Programmable passes, however, cannot
@@ -78,11 +78,11 @@ namespace Ogre {
     which the card can do. If, at the end of the day, the card cannot handle any of the
     techniques which are listed for the material, the engine will render the 
     geometry plain white, which should alert you to the problem.
-    @par
-    Ogre comes configured with a number of default settings for a newly 
+
+    %Ogre comes configured with a number of default settings for a newly 
     created material. These can be changed if you wish by retrieving the 
     default material settings through 
-    SceneManager::getDefaultMaterialSettings. Any changes you make to the 
+    MaterialManager::getDefaultSettings. Any changes you make to the
     Material returned from this method will apply to any materials created 
     from this point onward.
     */
@@ -132,17 +132,9 @@ namespace Ogre {
         */
         void clearBestTechniqueList(void);
 
-        /** Overridden from Resource.
-        */
-        void prepareImpl(void);
-
-        /** Overridden from Resource.
-        */
-        void unprepareImpl(void);
-
-        /** Overridden from Resource.
-        */
-        void loadImpl(void);
+        void prepareImpl(void) override;
+        void unprepareImpl(void) override;
+        void loadImpl(void) override;
 
         /** Unloads the material, frees resources etc.
         @see
@@ -197,6 +189,9 @@ namespace Ogre {
         /** Returns whether or not objects using this material be classified as opaque to the shadow caster system. */
         bool getTransparencyCastsShadows(void) const { return mTransparencyCastsShadows; }
 
+        typedef VectorIterator<Techniques> TechniqueIterator;
+        /// @name Techniques
+        /// @{
         /** Creates a new Technique for this Material.
         @remarks
             A Technique is a single way of rendering geometry in order to achieve the effect
@@ -226,7 +221,6 @@ namespace Ogre {
         void removeTechnique(unsigned short index);     
         /** Removes all the techniques in this Material. */
         void removeAllTechniques(void);
-        typedef VectorIterator<Techniques> TechniqueIterator;
         /** Get an iterator over the Techniques in this Material.
          * @deprecated use getTechniques() */
         OGRE_DEPRECATED TechniqueIterator getTechniqueIterator(void);
@@ -258,19 +252,6 @@ namespace Ogre {
         /** Gets a string explaining why any techniques are not supported. */
         const String& getUnsupportedTechniquesExplanation() const { return mUnsupportedReasons; }
 
-        /** Gets the number of levels-of-detail this material has in the 
-            given scheme, based on Technique::setLodIndex. 
-        @remarks
-            Note that this will not be up to date until the material has been compiled.
-        */
-        unsigned short getNumLodLevels(unsigned short schemeIndex) const;
-        /** Gets the number of levels-of-detail this material has in the 
-            given scheme, based on Technique::setLodIndex. 
-        @remarks
-            Note that this will not be up to date until the material has been compiled.
-        */
-        unsigned short getNumLodLevels(const String& schemeName) const;
-
         /** Gets the best supported technique. 
         @remarks
             This method returns the lowest-index supported Technique in this material
@@ -287,7 +268,7 @@ namespace Ogre {
             MaterialManager::Listener::handleSchemeNotFound as information.
         */
         Technique* getBestTechnique(unsigned short lodIndex = 0, const Renderable* rend = 0);
-
+        /// @}
 
         /** Creates a new copy of this material with the same settings but a new name.
         @param newName The name for the cloned material
@@ -320,11 +301,14 @@ namespace Ogre {
         */
         void compile(bool autoManageTextureUnits = true);
 
-        // -------------------------------------------------------------------------------
-        // The following methods are to make migration from previous versions simpler
-        // and to make code easier to write when dealing with simple materials
-        // They set the properties which have been moved to Pass for all Techniques and all Passes
+        /** @name Forwarded Pass Properties
 
+            The following methods are to make migration from previous versions simpler
+            and to make code easier to write when dealing with simple materials
+            They set the properties which have been moved to Pass for all Techniques and all Passes
+        */
+
+        /// @{
         /** Sets the point size properties for every Pass in every Technique.
         @note
             This property has been moved to the Pass class, which is accessible via the 
@@ -509,7 +493,7 @@ namespace Ogre {
             bool overrideScene,
             FogMode mode = FOG_NONE,
             const ColourValue& colour = ColourValue::White,
-            Real expDensity = 0.001, Real linearStart = 0.0, Real linearEnd = 1.0 );
+            Real expDensity = 0.001f, Real linearStart = 0.0f, Real linearEnd = 1.0f );
 
         /** Sets the depth bias to be used for each Pass.
         @note
@@ -585,9 +569,27 @@ namespace Ogre {
         */
         void setSeparateSceneBlending( const SceneBlendFactor sourceFactor, const SceneBlendFactor destFactor, const SceneBlendFactor sourceFactorAlpha, const SceneBlendFactor destFactorAlpha);
 
+        /// @deprecated do not use
+        OGRE_DEPRECATED bool applyTextureAliases(const AliasTextureNamePairList& aliasList, const bool apply = true) const;
+        /// @}
+
         /** Tells the material that it needs recompilation. */
         void _notifyNeedsRecompile(void);
 
+        /// @name Level of Detail
+        /// @{
+        /** Gets the number of levels-of-detail this material has in the
+            given scheme, based on Technique::setLodIndex.
+        @remarks
+            Note that this will not be up to date until the material has been compiled.
+        */
+        unsigned short getNumLodLevels(unsigned short schemeIndex) const;
+        /** Gets the number of levels-of-detail this material has in the
+            given scheme, based on Technique::setLodIndex.
+        @remarks
+            Note that this will not be up to date until the material has been compiled.
+        */
+        unsigned short getNumLodLevels(const String& schemeName) const;
         /** Sets the distance at which level-of-detail (LOD) levels come into effect.
         @remarks
             You should only use this if you have assigned LOD indexes to the Technique
@@ -643,6 +645,7 @@ namespace Ogre {
         const LodStrategy *getLodStrategy() const;
         /** Set the LOD strategy used by this material. */
         void setLodStrategy(LodStrategy *lodStrategy);
+        /// @}
 
         /** @copydoc Resource::touch
         */
@@ -653,19 +656,6 @@ namespace Ogre {
             // call superclass
             Resource::touch();
         }
-        
-        /** Applies texture names to Texture Unit State with matching texture name aliases.
-            All techniques, passes, and Texture Unit States within the material are checked.
-            If matching texture aliases are found then true is returned.
-
-        @param
-            aliasList is a map container of texture alias, texture name pairs
-        @param
-            apply set true to apply the texture aliases else just test to see if texture alias matches are found.
-        @return
-            True if matching texture aliases were found in the material.
-        */
-        bool applyTextureAliases(const AliasTextureNamePairList& aliasList, const bool apply = true) const;
 
         /** Gets the compilation status of the material.
         @return True if the material needs recompilation.

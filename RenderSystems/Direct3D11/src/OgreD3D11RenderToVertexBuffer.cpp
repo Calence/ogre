@@ -105,6 +105,8 @@ namespace Ogre {
         //Set pass before binding buffers to activate the GPU programs
         sceneMgr->_setPass(r2vbPass);
 
+        r2vbPass->_updateAutoParams(sceneMgr->_getAutoParamDataSource(), GPV_GLOBAL);
+
         RenderOperation renderOp;
         size_t targetBufferIndex;
         if (mResetRequested || mResetsEveryUpdate)
@@ -131,10 +133,6 @@ namespace Ogre {
         RenderSystem* targetRenderSystem = Root::getSingleton().getRenderSystem();
 
         //Draw the object
-        targetRenderSystem->_setWorldMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setViewMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setProjectionMatrix(Matrix4::IDENTITY);
-
         D3D11HardwareVertexBuffer* vertexBuffer = static_cast<D3D11HardwareVertexBuffer*>(mVertexBuffers[targetBufferIndex].get());
     
         UINT offset[1] = { 0 };

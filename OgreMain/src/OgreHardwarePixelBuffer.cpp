@@ -54,8 +54,8 @@ namespace Ogre
     //-----------------------------------------------------------------------------    
     void* HardwarePixelBuffer::lock(size_t offset, size_t length, LockOptions options)
     {
-        assert(!isLocked() && "Cannot lock this buffer, it is already locked!");
-        assert(offset == 0 && length == mSizeInBytes && "Cannot lock memory region, most lock box or entire buffer");
+        OgreAssert(!isLocked(), "Cannot lock this buffer: it is already locked");
+        OgreAssert(offset == 0 && length == mSizeInBytes, "Cannot lock memory region: must lock box or entire buffer");
         
         Box myBox(0, 0, 0, mWidth, mHeight, mDepth);
         const PixelBox &rv = lock(myBox, options);
@@ -89,8 +89,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------    
     const PixelBox& HardwarePixelBuffer::getCurrentLock() 
     { 
-        assert(isLocked() && "Cannot get current lock: buffer not locked");
-        
+        OgreAssert(isLocked(), "Cannot get current lock: buffer not locked");
         return mCurrentLock; 
     }
     
@@ -108,49 +107,26 @@ namespace Ogre
     {
         if(isLocked() || src->isLocked())
         {
-            OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR,
-                "Source and destination buffer may not be locked!",
-                "HardwarePixelBuffer::blit");
+            OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR, "Source and destination buffer may not be locked!");
         }
         if(src.get() == this)
         {
-            OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
-                "Source must not be the same object",
-                "HardwarePixelBuffer::blit" ) ;
+            OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "Source must not be the same object");
         }
-        const PixelBox &srclock = src->lock(srcBox, HBL_READ_ONLY);
 
-        LockOptions method = HBL_NORMAL;
-        if(dstBox.left == 0 && dstBox.top == 0 && dstBox.front == 0 &&
-           dstBox.right == mWidth && dstBox.bottom == mHeight &&
-           dstBox.back == mDepth)
+        LockOptions method = HBL_WRITE_ONLY;
+        if (dstBox.left == 0 && dstBox.top == 0 && dstBox.front == 0 && dstBox.right == mWidth &&
+            dstBox.bottom == mHeight && dstBox.back == mDepth)
             // Entire buffer -- we can discard the previous contents
             method = HBL_DISCARD;
-            
-        const PixelBox &dstlock = lock(dstBox, method);
-        if(dstlock.getWidth() != srclock.getWidth() ||
-            dstlock.getHeight() != srclock.getHeight() ||
-            dstlock.getDepth() != srclock.getDepth())
-        {
-            // Scaling desired
-            Image::scale(srclock, dstlock);
-        }
-        else
-        {
-            // No scaling needed
-            PixelUtil::bulkPixelConversion(srclock, dstlock);
-        }
 
+        src->blitToMemory(srcBox, lock(dstBox, method));
         unlock();
-        src->unlock();
     }
     //-----------------------------------------------------------------------------       
     void HardwarePixelBuffer::blit(const HardwarePixelBufferSharedPtr &src)
     {
-        blit(src, 
-            Box(0,0,0,src->getWidth(),src->getHeight(),src->getDepth()), 
-            Box(0,0,0,mWidth,mHeight,mDepth)
-        );
+        blit(src, Box(src->getSize()), Box(getSize()));
     }
     //-----------------------------------------------------------------------------    
     void HardwarePixelBuffer::readData(size_t offset, size_t length, void* pDest)

@@ -33,12 +33,16 @@ namespace Ogre {
     //---------------------------------------------------------------------
     D3D11HardwareIndexBuffer::D3D11HardwareIndexBuffer(HardwareBufferManagerBase* mgr, HardwareIndexBuffer::IndexType idxType, 
         size_t numIndexes, HardwareBuffer::Usage usage, D3D11Device & device, 
-        bool useSystemMemory, bool useShadowBuffer)
-        : HardwareIndexBuffer(mgr, idxType, numIndexes, usage, useSystemMemory, useShadowBuffer)
+        bool useShadowBuffer)
+        : HardwareIndexBuffer(mgr, idxType, numIndexes, usage, false, false /* see below */)
     {
+        // ensure DefaultHardwareIndexBuffer was not created
+        assert(!mShadowBuffer);
+        mUseShadowBuffer = useShadowBuffer;
+
         // everything is done via internal generalisation
         mBufferImpl = new D3D11HardwareBuffer(D3D11HardwareBuffer::INDEX_BUFFER, 
-            mSizeInBytes, mUsage, device, useSystemMemory, useShadowBuffer, false);
+            mSizeInBytes, mUsage, device, useShadowBuffer, false);
 
     }
     //---------------------------------------------------------------------

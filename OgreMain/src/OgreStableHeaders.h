@@ -49,6 +49,7 @@ THE SOFTWARE.
 #include "OgreBitwise.h"
 #include "OgreBone.h"
 #include "OgreCamera.h"
+#include "OgreCodec.h"
 #include "OgreColourValue.h"
 #include "OgreCommon.h"
 #include "OgreDataStream.h"
@@ -81,6 +82,7 @@ THE SOFTWARE.
 #include "OgreResourceGroupManager.h"
 #include "OgreResource.h"
 #include "OgreRoot.h"
+#include "OgreShadowTextureManager.h"
 #include "OgreSceneManager.h"
 #include "OgreSceneNode.h"
 #include "OgreScriptCompiler.h"
@@ -100,12 +102,20 @@ THE SOFTWARE.
 #include "OgreTextureManager.h"
 #include "Threading/OgreThreadHeaders.h"
 #include "OgreUserObjectBindings.h"
-#include "OgreVector2.h"
-#include "OgreVector3.h"
-#include "OgreVector4.h"
+#include "OgreVector.h"
 #include "OgreWireBoundingBox.h"
 #if OGRE_NO_ZIP_ARCHIVE == 0
 #   include "OgreZip.h"
+#endif
+
+#if OGRE_COMPILER == OGRE_COMPILER_MSVC
+#define OGRE_IGNORE_DEPRECATED_BEGIN __pragma(warning(push)) \
+    __pragma(warning(disable:4996))
+#define OGRE_IGNORE_DEPRECATED_END __pragma(warning(pop))
+#else
+#define OGRE_IGNORE_DEPRECATED_BEGIN _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#define OGRE_IGNORE_DEPRECATED_END _Pragma("GCC diagnostic pop")
 #endif
 
 #endif 

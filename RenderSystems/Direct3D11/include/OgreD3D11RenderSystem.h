@@ -60,6 +60,7 @@ namespace Ogre
         , protected D3D11DeviceResourceManager
     {
     private:
+	    friend class D3D11Sampler;
         Ogre::String mDriverName;    // it`s hint rather than hard requirement, could be ignored if empty or device removed
         D3D_DRIVER_TYPE mDriverType; // should be XXX_HARDWARE, XXX_SOFTWARE or XXX_WARP, never XXX_UNKNOWN or XXX_NULL
         D3D_FEATURE_LEVEL mFeatureLevel;
@@ -86,12 +87,9 @@ namespace Ogre
 
         void freeDevice(void);
         void createDevice();
-
-        /// return anisotropy level
-        DWORD _getCurrentAnisotropy(size_t unit);
         
         D3D11HardwareBufferManager* mHardwareBufferManager;
-        D3D11GpuProgramManager* mGpuProgramManager;
+        GpuProgramManager* mGpuProgramManager;
         D3D11HLSLProgramFactory* mHLSLProgramFactory;
 
         size_t mLastVertexSourceCount;
@@ -126,11 +124,6 @@ namespace Ogre
         bool                        mDepthStencilDescChanged;
 
         PolygonMode mPolygonMode;
-
-        FilterOptions FilterMinification[OGRE_MAX_TEXTURE_LAYERS];
-        FilterOptions FilterMagnification[OGRE_MAX_TEXTURE_LAYERS];
-        FilterOptions FilterMips[OGRE_MAX_TEXTURE_LAYERS];
-        bool          CompareEnabled;
 
         D3D11_RECT mScissorRect;
         
@@ -172,7 +165,7 @@ namespace Ogre
 
             /// texture 
             ID3D11ShaderResourceView  *pTex;
-            D3D11_SAMPLER_DESC  samplerDesc;
+            ID3D11SamplerState    *pSampler;
             bool used;
         } mTexStageDesc[OGRE_MAX_TEXTURE_LAYERS];
 
@@ -199,8 +192,6 @@ namespace Ogre
 #endif
 
     protected:
-        void setClipPlanesImpl(const PlaneList& clipPlanes);
-
         /**
          * With DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL flag render target views are unbound
          * from us each Present(), and we need the way to reestablish connection.
@@ -224,7 +215,7 @@ namespace Ogre
 
         // Overridden RenderSystem functions
         String validateConfigOptions(void);
-        RenderWindow* _initialise( bool autoCreateWindow, const String& windowTitle = "OGRE Render Window"  );
+        void _initialise() override;
         /// @copydoc RenderSystem::_createRenderWindow
         RenderWindow* _createRenderWindow(const String &name, unsigned int width, unsigned int height, 
             bool fullScreen, const NameValuePairList *miscParams = 0);
@@ -258,12 +249,10 @@ namespace Ogre
         void getCustomAttribute(const String& name, void* pData);
         // Low-level overridden members
         void setConfigOption( const String &name, const String &value );
-        void reinitialise();
         void shutdown();
         void validateDevice(bool forceDeviceElection = false);
         void handleDeviceLost();
         void destroyRenderTarget(const String& name);
-        VertexElementType getColourVertexElementType(void) const;
         void setStencilCheckEnabled(bool enabled);
         void setStencilBufferParams(CompareFunction func = CMPF_ALWAYS_PASS, 
             uint32 refValue = 0, uint32 compareMask = 0xFFFFFFFF, uint32 writeMask = 0xFFFFFFFF,
@@ -282,52 +271,35 @@ namespace Ogre
         D3D11HLSLProgram* _getBoundComputeProgram() const;
         void _setTexture(size_t unit, bool enabled, const TexturePtr &texPtr);
         void _setSampler(size_t unit, Sampler& sampler);
-        void _setTextureAddressingMode(size_t stage, const Sampler::UVWAddressingMode& uvw);
-        void _setTextureBorderColour(size_t stage, const ColourValue& colour);
-        void _setTextureMipmapBias(size_t unit, float bias);
-        void _setSeparateSceneBlending(SceneBlendFactor sourceFactor, SceneBlendFactor destFactor, SceneBlendFactor sourceFactorAlpha, 
-            SceneBlendFactor destFactorAlpha, SceneBlendOperation op = SBO_ADD, SceneBlendOperation alphaOp = SBO_ADD);
         void _setAlphaRejectSettings( CompareFunction func, unsigned char value, bool alphaToCoverage );
         void _setViewport( Viewport *vp );
-        void _beginFrame(void);
         void _endFrame(void);
         void _setCullingMode( CullingMode mode );
+        void _setDepthClamp(bool enable);
         void _setDepthBufferParams( bool depthTest = true, bool depthWrite = true, CompareFunction depthFunction = CMPF_LESS_EQUAL );
         void _setDepthBufferCheckEnabled( bool enabled = true );
         bool _getDepthBufferCheckEnabled( void );
-        void _setColourBufferWriteEnabled(bool red, bool green, bool blue, bool alpha);
+        void setColourBlendState(const ColourBlendState& state);
         void _setDepthBufferWriteEnabled(bool enabled = true);
         void _setDepthBufferFunction( CompareFunction func = CMPF_LESS_EQUAL );
         void _setDepthBias(float constantBias, float slopeScaleBias);
 		void _convertProjectionMatrix(const Matrix4& matrix, Matrix4& dest, bool forGpuProgram = false);
-        void _makeProjectionMatrix(const Radian& fovy, Real aspect, Real nearPlane, Real farPlane, 
-            Matrix4& dest, bool forGpuProgram = false);
-        void _makeProjectionMatrix(Real left, Real right, Real bottom, Real top, Real nearPlane, 
-            Real farPlane, Matrix4& dest, bool forGpuProgram = false);
-        void _makeOrthoMatrix(const Radian& fovy, Real aspect, Real nearPlane, Real farPlane, 
-            Matrix4& dest, bool forGpuProgram = false);
-        void _applyObliqueDepthProjection(Matrix4& matrix, const Plane& plane, bool forGpuProgram);
         void _setPolygonMode(PolygonMode level);
-        void _setTextureUnitFiltering(size_t unit, FilterType ftype, FilterOptions filter);
-        void _setTextureUnitCompareFunction(size_t unit, CompareFunction function);
-        void _setTextureUnitCompareEnabled(size_t unit, bool compare);
-        void _setTextureLayerAnisotropy(size_t unit, unsigned int maxAnisotropy);
         void setVertexDeclaration(VertexDeclaration* decl);
         void setVertexDeclaration(VertexDeclaration* decl, VertexBufferBinding* binding);
         void setVertexBufferBinding(VertexBufferBinding* binding);
         /** render using the feature of reading back the inactive depth-stencil buffers as texture*/
         void _renderUsingReadBackAsTexture(unsigned int passNr, Ogre::String variableName,unsigned int StartSlot);
+        void _dispatchCompute(const Vector3i& workgroupDim);
         void _render(const RenderOperation& op);
 
         void bindGpuProgram(GpuProgram* prg);
 
         void unbindGpuProgram(GpuProgramType gptype);
 
-        void bindGpuProgramParameters(GpuProgramType gptype, GpuProgramParametersSharedPtr params, uint16 mask);
+        void bindGpuProgramParameters(GpuProgramType gptype, const GpuProgramParametersPtr& params, uint16 mask);
 
-        void bindGpuProgramPassIterationParameters(GpuProgramType gptype);
-
-        void setScissorTest(bool enabled, size_t left = 0, size_t top = 0, size_t right = 800, size_t bottom = 600);
+        void setScissorTest(bool enabled, const Rect& rect = Rect());
         void clearFrameBuffer(unsigned int buffers, 
             const ColourValue& colour = ColourValue::Black, 
             Real depth = 1.0f, unsigned short stencil = 0);
@@ -350,9 +322,6 @@ namespace Ogre
 
         /// @copydoc RenderSystem::getDisplayMonitorCount
         unsigned int getDisplayMonitorCount() const {return 1;} //todo
-
-        /// @copydoc RenderSystem::hasAnisotropicMipMapFilter
-        virtual bool hasAnisotropicMipMapFilter() const { return true; }  
 
         D3D11Device &_getDevice() { return mDevice; }
         

@@ -57,7 +57,8 @@ namespace Ogre {
             PT_STENCIL,         //!< Set stencil operation
             PT_RENDERSCENE,     //!< Render the scene or part of it
             PT_RENDERQUAD,      //!< Render a full screen quad
-            PT_RENDERCUSTOM     //!< Render a custom sequence
+            PT_RENDERCUSTOM,    //!< Render a custom sequence
+            PT_COMPUTE          //!< dispatch a compute shader
         };
         
         /** Set the type of composition pass */
@@ -323,6 +324,9 @@ namespace Ogre {
         */
         const String& getCustomType() const;
 
+        void setThreadGroups(Vector3i g) { mThreadGroups = g; }
+        Vector3i getThreadGroups() { return mThreadGroups; }
+
     private:
         /// Parent technique
         CompositionTargetPass *mParent;
@@ -350,15 +354,9 @@ namespace Ogre {
         /** Inputs (for material used for rendering the quad).
             An empty string signifies that no input is used */
         InputTex mInputs[OGRE_MAX_TEXTURE_LAYERS];
+        Vector3i mThreadGroups;
         /// Stencil operation parameters
-        bool mStencilCheck;
-        CompareFunction mStencilFunc; 
-        uint32 mStencilRefValue;
-        uint32 mStencilMask;
-        StencilOperation mStencilFailOp;
-        StencilOperation mStencilDepthFailOp;
-        StencilOperation mStencilPassOp;
-        bool mStencilTwoSidedOperation;
+        StencilState mStencilState;
         bool mStencilReadBackAsTexture;
 
         /// True if quad should not cover whole screen

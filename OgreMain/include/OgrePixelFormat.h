@@ -41,10 +41,14 @@ namespace Ogre {
     */
     /** The pixel format used for images, textures, and render surfaces
      *
-     * @note the components are specified in "packed" native byte order.
-     * For PF_BYTE_* formats this means that platform endianess changes the order:
-     * e.g. Ogre::PF_BYTE_RGBA on little endian (x86) forms an integer as Ogre::PF_A8B8G8R8,
-     * while on big endian it "packs" as Ogre::PF_R8G8B8A8
+     * A pixel format described the storage format of pixel data. It defines the way pixels are encoded in memory.
+     * The components are specified in "packed" native byte order for native endian (16, 24 and 32 bit) integers.
+     * This means that a pixel with format Ogre::PF_A8R8G8B8 can be seen as a 32 bit integer, written as @c 0xAARRGGBB in hexadecimal
+     * on a little-endian (x86) machine or as @c 0xBBGGRRAA on a big-endian machine.
+     * The example above would be expressed with an array of bytes as `{0xBB, 0xGG, 0xRR, 0xAA}` on both machines.
+     * Therefore, one would use the Ogre::PF_BYTE_BGRA format when reading pixel data expressed in bytes.
+     * This format aliases to either Ogre::PF_A8B8G8R8 or Ogre::PF_R8G8B8A8
+     * depending on the machine endianess.
      */
     enum PixelFormat
     {
@@ -79,27 +83,8 @@ namespace Ogre {
         PF_A8B8G8R8,
         /// 32-bit pixel format, 8 bits for blue, green, red and alpha.
         PF_B8G8R8A8,
-#if OGRE_ENDIAN == OGRE_ENDIAN_BIG
-        /// 3 byte pixel format, 1 byte for red, 1 byte for green, 1 byte for blue
-        PF_BYTE_RGB = PF_R8G8B8,
-        /// 3 byte pixel format, 1 byte for blue, 1 byte for green, 1 byte for red
-        PF_BYTE_BGR = PF_B8G8R8,
-        /// 4 byte pixel format, 1 byte for blue, 1 byte for green, 1 byte for red and one byte for alpha
-        PF_BYTE_BGRA = PF_B8G8R8A8,
-        /// 4 byte pixel format, 1 byte for red, 1 byte for green, 1 byte for blue, and one byte for alpha
-        PF_BYTE_RGBA = PF_R8G8B8A8,
-#else
-        /// 3 byte pixel format, 1 byte for red, 1 byte for green, 1 byte for blue
-        PF_BYTE_RGB = PF_B8G8R8,
-        /// 3 byte pixel format, 1 byte for blue, 1 byte for green, 1 byte for red
-        PF_BYTE_BGR = PF_R8G8B8,
-        /// 4 byte pixel format, 1 byte for blue, 1 byte for green, 1 byte for red and one byte for alpha
-        PF_BYTE_BGRA = PF_A8R8G8B8,
-        /// 4 byte pixel format, 1 byte for red, 1 byte for green, 1 byte for blue, and one byte for alpha
-        PF_BYTE_RGBA = PF_A8B8G8R8,
-#endif        
         /// 32-bit pixel format, 2 bits for alpha, 10 bits for red, green and blue.
-        PF_A2R10G10B10 = PF_B8G8R8A8 + 1, // ensure steady continuing enumeration
+        PF_A2R10G10B10,
         /// 32-bit pixel format, 10 bits for blue, green and red, 2 bits for alpha.
         PF_A2B10G10R10,
         /// DDS (DirectDraw Surface) DXT1 format
@@ -287,8 +272,31 @@ namespace Ogre {
         PF_ASTC_RGBA_12X10_LDR,
         /// ASTC (ARM Adaptive Scalable Texture Compression RGBA, block size 12x12)
         PF_ASTC_RGBA_12X12_LDR,
+        PF_DEPTH32,
+        /// Depth texture format with 32-bit floating point
+        PF_DEPTH32F,
         /// Number of pixel formats currently defined
-        PF_COUNT
+        PF_COUNT,
+        // endianess aware aliases
+#if OGRE_ENDIAN == OGRE_ENDIAN_BIG
+        /// @copydoc PF_R8G8B8
+        PF_BYTE_RGB = PF_R8G8B8,
+        /// @copydoc PF_B8G8R8
+        PF_BYTE_BGR = PF_B8G8R8,
+        /// @copydoc PF_B8G8R8A8
+        PF_BYTE_BGRA = PF_B8G8R8A8,
+        /// @copydoc PF_R8G8B8A8
+        PF_BYTE_RGBA = PF_R8G8B8A8,
+#else
+        /// @copydoc PF_B8G8R8
+        PF_BYTE_RGB = PF_B8G8R8,
+        /// @copydoc PF_R8G8B8
+        PF_BYTE_BGR = PF_R8G8B8,
+        /// @copydoc PF_A8R8G8B8
+        PF_BYTE_BGRA = PF_A8R8G8B8,
+        /// @copydoc PF_A8B8G8R8
+        PF_BYTE_RGBA = PF_A8B8G8R8,
+#endif
     };
     typedef std::vector<PixelFormat> PixelFormatList;
 
@@ -337,7 +345,7 @@ namespace Ogre {
     class _OgreExport PixelBox: public Box, public ImageAlloc {
     public:
         /// Parameter constructor for setting the members manually
-        PixelBox() {}
+        PixelBox() : data(NULL), format(PF_UNKNOWN) {}
         ~PixelBox() {}
         /** Constructor providing extents in the form of a Box object. This constructor
             assumes the pixel data is laid out consecutively in memory. (this
@@ -557,15 +565,6 @@ namespace Ogre {
         */
         static PixelFormat getFormatFromName(const String& name, bool accessibleOnly = false, bool caseSensitive = false);
 
-        /** Gets the BNF expression of the pixel-formats.
-            @note                   The string returned by this function is intended to be used as a BNF expression
-                                    to work with Compiler2Pass.
-            @param  accessibleOnly  If true, only accessible pixel format will take into account, otherwise all
-                                    pixel formats list in PixelFormat enumeration will being returned.
-            @return                A string contains the BNF expression.
-        */
-        static String getBNFExpressionOfPixelFormats(bool accessibleOnly = false);
-
         /** Returns the similar format but acoording with given bit depths.
             @param fmt      The original foamt.
             @param integerBits Preferred bit depth (pixel bits) for integer pixel format.
@@ -635,6 +634,7 @@ namespace Ogre {
             @param  srcFormat   Pixel format of source region
             @param  dst         Pointer to destination region
             @param  dstFormat   Pixel format of destination region
+            @param  count       The number of pixels to convert
          */
         static void bulkPixelConversion(void *src, PixelFormat srcFormat, void *dst, PixelFormat dstFormat, unsigned int count);
 

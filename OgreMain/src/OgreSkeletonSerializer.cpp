@@ -49,10 +49,7 @@ namespace Ogre {
     void SkeletonSerializer::exportSkeleton(const Skeleton* pSkeleton, 
         const String& filename, SkeletonVersion ver, Endian endianMode)
     {
-        std::fstream *f = OGRE_NEW_T(std::fstream, MEMCATEGORY_GENERAL)();
-        f->open(filename.c_str(), std::ios::binary | std::ios::out);
-        DataStreamPtr stream(OGRE_NEW FileStreamDataStream(f));
-
+        DataStreamPtr stream = _openFileStream(filename, std::ios::binary | std::ios::out);
         exportSkeleton(pSkeleton, stream, ver, endianMode);
 
         stream->close();
@@ -97,11 +94,8 @@ namespace Ogre {
         }
 
         // Write links
-        Skeleton::LinkedSkeletonAnimSourceIterator linkIt = 
-            pSkeleton->getLinkedSkeletonAnimationSourceIterator();
-        while(linkIt.hasMoreElements())
+        for(const auto& link : pSkeleton->getLinkedSkeletonAnimationSources())
         {
-            const LinkedSkeletonAnimationSource& link = linkIt.getNext();
             writeSkeletonAnimationLink(pSkeleton, link);
         }       
         popInnerChunk(stream);

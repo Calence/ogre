@@ -66,8 +66,9 @@ void help(void)
     cout << "-tm            = Split tangent vertices at UV mirror points" << endl;
     cout << "-tr            = Split tangent vertices where basis is rotated > 90 degrees" << endl;
     cout << "-r         = DON'T reorganise buffers to recommended format" << endl;
-    cout << "-d3d       = Convert to D3D colour formats" << endl;
-    cout << "-gl        = Convert to GL colour formats" << endl;
+    cout << "-d3d       = Convert to argb colour format" << endl;
+    cout << "-gl        = Convert to abgr colour format" << endl;
+    cout << "-byte      = Convert to byte colour format" << endl;
     cout << "-srcd3d    = Interpret ambiguous colours as D3D style" << endl;
     cout << "-srcgl     = Interpret ambiguous colours as GL style" << endl;
     cout << "-E endian  = Set endian mode 'big' 'little' or 'native' (default)" << endl;
@@ -145,48 +146,37 @@ void parseOpts(UnaryOptionList& unOpts, BinaryOptionList& binOpts)
     opts.recalcBounds = false;
     opts.targetVersion = MESH_VERSION_LATEST;
 
+    opts.suppressEdgeLists = unOpts["-e"];
+    opts.generateTangents = unOpts["-t"];
+    opts.tangentSplitMirrored = unOpts["-tm"];
+    opts.tangentSplitRotated = unOpts["-tr"];
+    opts.lodAutoconfigure = unOpts["-autogen"];
+    opts.interactive = unOpts["-i"];
+    opts.dontReorganise = unOpts["-r"];
 
-    UnaryOptionList::iterator ui = unOpts.find("-e");
-    opts.suppressEdgeLists = ui->second;
-    ui = unOpts.find("-t");
-    opts.generateTangents = ui->second;
-    ui = unOpts.find("-tm");
-    opts.tangentSplitMirrored = ui->second;
-    ui = unOpts.find("-tr");
-    opts.tangentSplitRotated = ui->second;
-
-    ui = unOpts.find("-autogen");
-    opts.lodAutoconfigure = ui->second;
-
-    ui = unOpts.find("-i");
-    opts.interactive = ui->second;
-    ui = unOpts.find("-r");
-    opts.dontReorganise = ui->second;
-    ui = unOpts.find("-d3d");
-    if (ui->second) {
+    if (unOpts["-d3d"]) {
         opts.destColourFormatSet = true;
         opts.destColourFormat = VET_COLOUR_ARGB;
     }
-    ui = unOpts.find("-gl");
-    if (ui->second) {
+    if (unOpts["-gl"]) {
         opts.destColourFormatSet = true;
         opts.destColourFormat = VET_COLOUR_ABGR;
     }
-    ui = unOpts.find("-srcd3d");
-    if (ui->second) {
+    if (unOpts["-byte"]) {
+        opts.destColourFormatSet = true;
+        opts.destColourFormat = VET_UBYTE4_NORM;
+    }
+    if (unOpts["-srcd3d"]) {
         opts.srcColourFormatSet = true;
         opts.srcColourFormat = VET_COLOUR_ARGB;
     }
-    ui = unOpts.find("-srcgl");
-    if (ui->second) {
+    if (unOpts["-srcgl"]) {
         opts.srcColourFormatSet = true;
         opts.srcColourFormat = VET_COLOUR_ABGR;
     }
-    ui = unOpts.find("-b");
-    if (ui->second) {
+    if (unOpts["-b"]) {
         opts.recalcBounds = true;
     }
-
 
     BinaryOptionList::iterator bi = binOpts.find("-l");
     if (!bi->second.empty()) {
@@ -249,8 +239,8 @@ void parseOpts(UnaryOptionList& unOpts, BinaryOptionList& binOpts)
         } else if (bi->second == "1.0") {
             opts.targetVersion = MESH_VERSION_1_0;
         } else {
-            logMgr->stream() << "Unrecognised target mesh version '" << bi->second << "'";          
-    }
+            logMgr->logError("Unrecognised target mesh version '" + bi->second + "'");
+        }
     }
     
 }
@@ -443,15 +433,10 @@ void reorganiseVertexBuffers(const String& desc, Mesh& mesh, SubMesh* sm, Vertex
                         offset = 0;
                         currentBuffer = i->getSource();
                     }
-                    newDecl->addElement(
-                        currentBuffer,
-                        offset,
-                        i->getType(),
-                        i->getSemantic(),
-                        i->getIndex());
-
-                    offset += VertexElement::getTypeSize(i->getType());
-                    
+                    offset += newDecl
+                                  ->addElement(currentBuffer, offset, i->getType(), i->getSemantic(),
+                                               i->getIndex())
+                                  .getSize();
                 }
                 // Usages don't matter here since we're onlly exporting
                 BufferUsageList bufferUsages;
@@ -979,6 +964,18 @@ void resolveColourAmbiguities(Mesh* mesh)
 
 
 }
+
+struct MaterialCreator : public MeshSerializerListener
+{
+    void processMaterialName(Mesh *mesh, String *name)
+    {
+        // create material because we do not load any .material files
+        MaterialManager::getSingleton().createOrRetrieve(*name, mesh->getGroup());
+    }
+
+    void processSkeletonName(Mesh *mesh, String *name) {}
+    void processMeshCompleted(Mesh *mesh) {}
+};
 }
 
 int main(int numargs, char** args)
@@ -1000,6 +997,8 @@ int main(int numargs, char** args)
         matMgr->initialise();
         skelMgr = new SkeletonManager();
         meshSerializer = new MeshSerializer();
+        MaterialCreator matCreator;
+        meshSerializer->setListener(&matCreator);
         skeletonSerializer = new SkeletonSerializer();
         bufferManager = new DefaultHardwareBufferManager(); // needed because we don't have a rendersystem
         meshMgr = new MeshManager();
@@ -1018,6 +1017,7 @@ int main(int numargs, char** args)
         unOptList["-r"] = false;
         unOptList["-gl"] = false;
         unOptList["-d3d"] = false;
+        unOptList["-byte"] = false;
         unOptList["-srcgl"] = false;
         unOptList["-srcd3d"] = false;
         unOptList["-autogen"] = false;

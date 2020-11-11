@@ -264,7 +264,7 @@ namespace Ogre {
         */
         void addOrganisationMode(OrganisationMode om) 
         { 
-            mOrganisationMode |= om; 
+            mOrganisationMode |= uint8(om);
         }
 
         /// Add a renderable to the collection using a given pass
@@ -522,7 +522,7 @@ namespace Ogre {
                     pPriorityGrp->addOrganisationMode((QueuedRenderableCollection::OrganisationMode)mOrganisationMode);
                 }
 
-                mPriorityGroups.insert(PriorityMap::value_type(priority, pPriorityGrp));
+                mPriorityGroups.emplace(priority, pPriorityGrp);
             }
             else
             {
@@ -641,7 +641,7 @@ namespace Ogre {
         */
         void addOrganisationMode(QueuedRenderableCollection::OrganisationMode om)
         {
-            mOrganisationMode |= om;
+            mOrganisationMode |= uint8(om);
 
             PriorityMap::iterator i, iend;
             iend = mPriorityGroups.end();
@@ -696,7 +696,7 @@ namespace Ogre {
                         pDstPriorityGrp->addOrganisationMode((QueuedRenderableCollection::OrganisationMode)mOrganisationMode);
                     }
 
-                    mPriorityGroups.insert(PriorityMap::value_type(priority, pDstPriorityGrp));
+                    mPriorityGroups.emplace(priority, pDstPriorityGrp);
                 }
                 else
                 {

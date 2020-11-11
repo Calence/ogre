@@ -30,6 +30,12 @@ THE SOFTWARE.
 
 #include "OgrePrerequisites.h"
 
+#ifdef __FreeBSD__
+#undef bswap16
+#undef bswap32
+#undef bswap64
+#endif
+
 #ifndef __has_builtin
     // Compatibility with non-clang compilers
     #define __has_builtin(x) 0
@@ -232,7 +238,7 @@ namespace Ogre {
         {
             if(value <= 0.0f) return 0;
             else if (value >= 1.0f) return (1<<bits)-1;
-            else return (unsigned int)(value * (1<<bits));     
+            else return (unsigned int)(value * float(1<<bits));
         }
 
         /**

@@ -44,7 +44,7 @@ namespace Ogre
     void LodOutputProviderBuffer::bakeManualLodLevel( LodData* data, String& manualMeshName, int lodIndex )
     {
         // placeholder dummy
-        unsigned short submeshCount = ushort(mBuffer.submesh.size());
+        ushort submeshCount = Math::uint16Cast(mBuffer.submesh.size());
         LodIndexBuffer buffer;
         buffer.indexSize = 2;
         buffer.indexCount = 0;
@@ -63,7 +63,7 @@ namespace Ogre
 
     void LodOutputProviderBuffer::bakeLodLevel(LodData* data, int lodIndex)
     {
-        unsigned short submeshCount = ushort(mBuffer.submesh.size());
+        ushort submeshCount = Math::uint16Cast(mBuffer.submesh.size());
 
         // Create buffers.
         for (unsigned short i = 0; i < submeshCount; i++) {
@@ -109,7 +109,7 @@ namespace Ogre
 
 void LodOutputProviderBuffer::inject()
 {
-    unsigned short submeshCount = ushort(mBuffer.submesh.size());
+    ushort submeshCount = Math::uint16Cast(mBuffer.submesh.size());
     OgreAssert(mMesh->getNumSubMeshes() == submeshCount, "");
     mMesh->removeLodLevels();
     for (unsigned short i = 0; i < submeshCount; i++) {
@@ -129,7 +129,7 @@ void LodOutputProviderBuffer::inject()
                 if(n > 0 && buffers[n-1].indexBuffer == buff.indexBuffer){
                     lods.back()->indexBuffer = (*(++lods.rbegin()))->indexBuffer;
                 } else {
-                    lods.back()->indexBuffer = HardwareBufferManager::getSingleton().createIndexBuffer(
+                    lods.back()->indexBuffer = mMesh->getHardwareBufferManager()->createIndexBuffer(
                         buff.indexSize == 2 ?
                         HardwareIndexBuffer::IT_16BIT : HardwareIndexBuffer::IT_32BIT,
                         indexCount, mMesh->getIndexBufferUsage(), mMesh->isIndexBufferShadowed());

@@ -45,6 +45,7 @@ namespace Ogre
     */
 
     class AndroidLogListener;
+    class ShadowTextureManager;
 
     typedef std::vector<RenderSystem*> RenderSystemList;
     
@@ -66,6 +67,10 @@ namespace Ogre
         // To allow update of active renderer if
         // RenderSystem::initialise is used directly
         friend class RenderSystem;
+    public:
+        typedef std::map<String, MovableObjectFactory*> MovableObjectFactoryMap;
+        typedef std::vector<DynLib*> PluginLibList;
+        typedef std::vector<Plugin*> PluginInstanceList;
     protected:
         RenderSystemList mRenderers;
         RenderSystem* mActiveRenderer;
@@ -97,7 +102,6 @@ namespace Ogre
         std::unique_ptr<ArchiveFactory> mZipArchiveFactory;
         std::unique_ptr<ArchiveManager> mArchiveManager;
 
-        typedef std::map<String, MovableObjectFactory*> MovableObjectFactoryMap;
         MovableObjectFactoryMap mMovableObjectFactoryMap;
         std::unique_ptr<MovableObjectFactory> mRibbonTrailFactory;
         std::unique_ptr<MovableObjectFactory> mBillboardChainFactory;
@@ -129,9 +133,6 @@ namespace Ogre
         bool mRemoveQueueStructuresOnClear;
         Real mDefaultMinPixelSize;
 
-    public:
-        typedef std::vector<DynLib*> PluginLibList;
-        typedef std::vector<Plugin*> PluginInstanceList;
     protected:
         /// List of plugin DLLs loaded
         PluginLibList mPluginLibs;
@@ -154,10 +155,8 @@ namespace Ogre
             plugins.
             @param
                 pluginsfile The file that contains plugins information.
-                Defaults to "plugins.cfg" in release and to "plugins_d.cfg"
-                in debug build.
         */
-        void loadPlugins(const String& pluginsfile = "plugins" OGRE_BUILD_SUFFIX ".cfg");
+        void loadPlugins(const String& pluginsfile = "plugins.cfg");
         /** Initialise all loaded plugins - allows plugins to perform actions
             once the renderer is initialised.
         */
@@ -208,14 +207,13 @@ namespace Ogre
 
         /** Constructor
         @param pluginFileName The file that contains plugins information.
-            Defaults to "plugins.cfg" in release build and to "plugins_d.cfg"
-            in debug build. May be left blank to ignore.
+            May be left blank to ignore.
         @param configFileName The file that contains the configuration to be loaded.
             Defaults to "ogre.cfg", may be left blank to load nothing.
         @param logFileName The logfile to create, defaults to Ogre.log, may be 
             left blank if you've already set up LogManager & Log yourself
         */
-        Root(const String& pluginFileName = "plugins" OGRE_BUILD_SUFFIX ".cfg", 
+        Root(const String& pluginFileName = "plugins.cfg",
             const String& configFileName = "ogre.cfg", 
             const String& logFileName = "Ogre.log");
         ~Root();
@@ -325,6 +323,8 @@ namespace Ogre
                 Root::createRenderWindow). The window will be
                 created based on the options currently set on the render
                 system.
+            @param windowTitle
+            @param customCapabilitiesConfig see #useCustomRenderSystemCapabilities
             @return
                 A pointer to the automatically created window, if
                 requested, otherwise <b>NULL</b>.
@@ -365,7 +365,7 @@ namespace Ogre
         /// @copydoc SceneManagerEnumerator::getMetaData(const String& )const
         const SceneManagerMetaData* getSceneManagerMetaData(const String& typeName) const;
 
-        /// @copydoc SceneManagerEnumerator::getMetaData()
+        /// @copydoc SceneManagerEnumerator::getMetaData()const
         const SceneManagerEnumerator::MetaDataList& getSceneManagerMetaData() const;
 
         /// @copydoc SceneManagerEnumerator::getMetaDataIterator
@@ -558,15 +558,8 @@ namespace Ogre
         static DataStreamPtr openFileStream(const String& filename,
                 const String& groupName = ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 
-        /** Generates a packed data version of the passed in ColourValue suitable for
-            use with the current RenderSystem.
-        @remarks
-            Since different render systems have different colour data formats (eg
-            RGBA for GL, ARGB for D3D) this method allows you to use 1 method for all.
-        @param colour The colour to convert
-        @param pDest Pointer to location to put the result.
-        */
-        void convertColourValue(const ColourValue& colour, uint32* pDest);
+        /// @deprecated use ColourValue::getAsBYTE()
+        OGRE_DEPRECATED void convertColourValue(const ColourValue& colour, uint32* pDest);
 
         /** Retrieves a pointer to the window that was created automatically
             @remarks
@@ -583,9 +576,15 @@ namespace Ogre
         RenderWindow* createRenderWindow(const String &name, unsigned int width, unsigned int height, 
             bool fullScreen, const NameValuePairList *miscParams = 0) ;
 
-        /** @copydoc RenderSystem::_createRenderWindows
-        */
-        bool createRenderWindows(const RenderWindowDescriptionList& renderWindowDescriptions,
+        /// @overload
+        RenderWindow* createRenderWindow(const RenderWindowDescription& desc)
+        {
+            return createRenderWindow(desc.name, desc.width, desc.height,
+                                      desc.useFullScreen, &desc.miscParams);
+        }
+
+        /// @deprecated call createRenderWindow multiple times
+        OGRE_DEPRECATED bool createRenderWindows(const RenderWindowDescriptionList& renderWindowDescriptions,
             RenderWindowList& createdWindows);
     
         /** Detaches a RenderTarget from the active render system
@@ -773,7 +772,7 @@ namespace Ogre
             This is only intended for internal use; it is only valid during the
             rendering of a frame.
         */
-        SceneManager* _getCurrentSceneManager(void) const;
+        SceneManager* _getCurrentSceneManager(void) const { return mSceneManagerStack.empty() ? NULL : mSceneManagerStack.back(); }
         /** Pushes the scene manager currently being used to render.
         @remarks
             This is only intended for internal use.
@@ -905,7 +904,13 @@ namespace Ogre
         /** Return an iterator over all the MovableObjectFactory instances currently
             registered.
         */
-        MovableObjectFactoryIterator getMovableObjectFactoryIterator(void) const;
+        const MovableObjectFactoryMap& getMovableObjectFactories() const
+        {
+            return mMovableObjectFactoryMap;
+        }
+
+        /// @deprecated use getMovableObjectFactories
+        OGRE_DEPRECATED MovableObjectFactoryIterator getMovableObjectFactoryIterator(void) const;
 
         /**
         * Gets the number of display monitors.

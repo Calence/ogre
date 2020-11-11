@@ -11,8 +11,6 @@
 # Terrain optional component
 ############################################################
 
-PROJECT(OgreTerrain)
-
 # define header and source files for the library
 file(GLOB HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
 file(GLOB SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -59,4 +57,6 @@ ogre_config_component(OgreTerrain)
 install(FILES ${HEADER_FILES}
   DESTINATION include/OGRE/Terrain
 )
-
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/Media/Terrain"
+  DESTINATION "${OGRE_MEDIA_PATH}/"
+)

@@ -29,8 +29,9 @@ THE SOFTWARE.
 #define __CompositionTargetPass_H__
 
 #include "OgrePrerequisites.h"
-#include "OgreIteratorWrappers.h"
+#include "OgreIteratorWrapper.h"
 #include "OgreHeaderPrefix.h"
+#include "OgreCompositionPass.h"
 
 namespace Ogre {
     /** \addtogroup Core
@@ -121,7 +122,7 @@ namespace Ogre {
         
         /** Create a new pass, and return a pointer to it.
         */
-        CompositionPass *createPass();
+        CompositionPass *createPass(CompositionPass::PassType type = CompositionPass::PT_RENDERQUAD);
         /** Remove a pass. It will also be destroyed.
         */
         void removePass(size_t idx);

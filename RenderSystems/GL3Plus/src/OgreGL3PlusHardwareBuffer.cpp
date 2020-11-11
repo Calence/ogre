@@ -68,7 +68,7 @@ namespace Ogre {
 
         bool writeOnly =
             options == HardwareBuffer::HBL_WRITE_ONLY ||
-            ((mUsage & HardwareBuffer::HBU_WRITE_ONLY) &&
+            ((mUsage & HBU_DETAIL_WRITE_ONLY) &&
              options != HardwareBuffer::HBL_READ_ONLY && options != HardwareBuffer::HBL_NORMAL);
 
         if (writeOnly)
@@ -89,16 +89,16 @@ namespace Ogre {
             access |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
 
         // FIXME: Big stall here
+        // NOTE: Stall happens, when using modern drivers, with multi threading enabled driver
         void* pBuffer;
         OGRE_CHECK_GL_ERROR(pBuffer = glMapBufferRange(mTarget, offset, length, access));
 
         if(pBuffer == 0)
         {
-            OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR,
-                        "Buffer: Out of memory",
-                        "GL3PlusHardwareBuffer::lock");
+            OGRE_EXCEPT(
+                Exception::ERR_INTERNAL_ERROR,
+                StringUtil::format("failed to lock %zu bytes at %zu of total %zu bytes", length, offset, mSizeInBytes));
         }
-
 
         // pBuffer is already offsetted in glMapBufferRange
         return pBuffer;
@@ -165,8 +165,7 @@ namespace Ogre {
 
     GLenum GL3PlusHardwareBuffer::getGLUsage(uint32 usage)
     {
-        return  (usage & HardwareBuffer::HBU_DISCARDABLE) ? GL_STREAM_DRAW :
-                (usage & HardwareBuffer::HBU_STATIC) ? GL_STATIC_DRAW :
-                GL_DYNAMIC_DRAW;
+        return (usage == HBU_GPU_TO_CPU) ? GL_STATIC_READ
+                                         : (usage == HBU_GPU_ONLY) ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
     }
 }

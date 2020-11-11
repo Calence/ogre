@@ -252,6 +252,58 @@ namespace Ogre {
         SBO_MIN,
         SBO_MAX
     };
+
+    /** Describes the global blending factors for combining subsequent renders with the existing frame contents.
+
+    By default the operation is Ogre::SBO_ADD, which creates this equation
+
+    $$final = (passOutput * sourceFactor) + (frameBuffer * destFactor)$$
+
+    Each of the factors is specified as one of Ogre::SceneBlendFactor.
+
+    By setting a different Ogre::SceneBlendOperation you can achieve a different effect.
+    */
+    struct _OgreExport ColourBlendState
+    {
+        /** @name Write Mask
+         * Whether writing is enabled for each of the 4 colour channels */
+        /// @{
+        bool writeR : 1;
+        bool writeG : 1;
+        bool writeB : 1;
+        bool writeA : 1;
+        /// @}
+
+        /** @name Blending factors
+         * used to weight the render colour components and the frame colour components */
+        /// @{
+        SceneBlendFactor sourceFactor;
+        SceneBlendFactor destFactor;
+        SceneBlendFactor sourceFactorAlpha;
+        SceneBlendFactor destFactorAlpha;
+        /// @}
+
+        /** @name Blending operations
+         * The blend operation mode for combining colour values */
+        /// @{
+        SceneBlendOperation operation;
+        SceneBlendOperation alphaOperation;
+        /// @}
+
+        ColourBlendState()
+            : writeR(true), writeG(true), writeB(true), writeA(true), sourceFactor(SBF_ONE),
+              destFactor(SBF_ZERO), sourceFactorAlpha(SBF_ONE), destFactorAlpha(SBF_ZERO),
+              operation(SBO_ADD), alphaOperation(SBO_ADD)
+        {
+        }
+
+        /// can we simply overwrite the existing pixels or do we have to blend
+        bool blendingEnabled() const
+        {
+            return !(sourceFactor == SBF_ONE && destFactor == SBF_ZERO &&
+                     sourceFactorAlpha == SBF_ONE && destFactorAlpha == SBF_ZERO);
+        }
+    };
     /** @} */
     /** @} */
 

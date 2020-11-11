@@ -34,14 +34,18 @@ namespace Ogre {
     //---------------------------------------------------------------------
     D3D11HardwareVertexBuffer::D3D11HardwareVertexBuffer(HardwareBufferManagerBase* mgr, size_t vertexSize, 
         size_t numVertices, HardwareBuffer::Usage usage, D3D11Device & device, 
-        bool useSystemMemory, bool useShadowBuffer, bool streamOut)
-        : HardwareVertexBuffer(mgr, vertexSize, numVertices, usage, useSystemMemory, useShadowBuffer),
+        bool useShadowBuffer, bool streamOut)
+        : HardwareVertexBuffer(mgr, vertexSize, numVertices, usage, false, false /* see below */),
           mBufferImpl(0)
           
     {
+        // ensure DefaultHardwareVertexBuffer was not created
+        assert(!mShadowBuffer);
+        mUseShadowBuffer = useShadowBuffer;
+
         // everything is done via internal generalisation
         mBufferImpl = new D3D11HardwareBuffer(D3D11HardwareBuffer::VERTEX_BUFFER, 
-            mSizeInBytes, mUsage, device, useSystemMemory, useShadowBuffer, streamOut);
+            mSizeInBytes, mUsage, device, useShadowBuffer, streamOut);
 
     }
     //---------------------------------------------------------------------

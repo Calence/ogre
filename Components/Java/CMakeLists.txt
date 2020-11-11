@@ -1,7 +1,3 @@
-project(OgreJava)
-
-find_package(SWIG 3.0.8)
-
 if(ANDROID)
 	set(JNI_FOUND TRUE)
 	add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
@@ -19,28 +15,31 @@ if(NOT JNI_FOUND OR NOT SWIG_FOUND)
 endif()
 
 include_directories(${JNI_INCLUDE_DIRS})
-include_directories("${OGRE_BINARY_DIR}/include" "${OGRE_SOURCE_DIR}/OgreMain/include")
+include_directories("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/OgreMain/include")
 include(${SWIG_USE_FILE})
 
 if(MSVC)
-	# TODO: Set MSVC flags
-	add_definitions(-DMS_NO_COREDLL)
+	add_definitions(/bigobj /wd4700)
 else()
 	add_definitions(-Wno-strict-aliasing -Wno-cast-qual -Wno-shadow -Wno-missing-declarations)
+	if(CMAKE_COMPILER_IS_GNUCXX)
+		add_definitions(-Wno-unused-but-set-variable)
+	endif()
 endif()
 
-set(CMAKE_SWIG_FLAGS -w401,314 -package org.Ogre)
+set(CMAKE_SWIG_FLAGS -w401,314 -package org.ogre)
 
 if (APPLE AND NOT ANDROID)
 	# we are using libc++ on OSX
 	list(APPEND CMAKE_SWIG_FLAGS -D_LIBCPP_VERSION)
 endif()
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/java/libs")
-set(CMAKE_SWIG_OUTDIR "${OGRE_BINARY_DIR}/java/src/org/Ogre")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/java/libs")
+set(CMAKE_SWIG_OUTDIR "${PROJECT_BINARY_DIR}/java/src/org/ogre")
 
 if(ANDROID)
-	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${ANDROID_NDK_ABI_NAME}")
+    set(CMAKE_SWIG_OUTDIR "${PROJECT_BINARY_DIR}/java/app/src/main/java/org/ogre")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/java/app/src/main/jniLibs/${ANDROID_NDK_ABI_NAME}")
 	list(APPEND CMAKE_SWIG_FLAGS -D__ANDROID__)
 endif()
 
@@ -57,11 +56,12 @@ if(OGRE_BUILD_COMPONENT_OVERLAY)
 	list(APPEND SWIG_INPUT_MODULES ../Overlay/include/OgreOverlay.i)
 endif()
 
-if(OGRE_BUILD_COMPONENT_BITES)
-	if(SDL2_FOUND)
-		include_directories(${SDL2_INCLUDE_DIR})
-	endif()
+if(OGRE_BUILD_COMPONENT_OVERLAY_IMGUI)
+    include_directories("${IMGUI_DIR}")
+    list(APPEND CMAKE_SWIG_FLAGS -DHAVE_IMGUI -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS)
+endif()
 
+if(OGRE_BUILD_COMPONENT_BITES)
 	set_source_files_properties(../Bites/include/OgreBites.i PROPERTIES CPLUSPLUS ON)
 
 	if(ANDROID)
@@ -71,17 +71,21 @@ if(OGRE_BUILD_COMPONENT_BITES)
 	list(APPEND SWIG_INPUT_MODULES ../Bites/include/OgreBites.i)
 endif()
 
+set(CMAKE_WARN_DEPRECATED OFF)
 swig_add_module(OgreJNI java ${SWIG_INPUT_MODULES})
 swig_link_libraries(OgreJNI OgreBites OgreOverlay OgreRTShaderSystem OgreMain ${JNI_LIBRARIES})
 
 if(${Java_FOUND})
-	set(CLASS_OUTPUT_PATH "${OGRE_BINARY_DIR}/java/classes")
-	set(JAR_NAME "${OGRE_BINARY_DIR}/java/Ogre-${OGRE_VERSION}.jar")
+	set(CLASS_OUTPUT_PATH "${PROJECT_BINARY_DIR}/java/classes")
+	set(JAR_NAME "${PROJECT_BINARY_DIR}/java/Ogre-${OGRE_VERSION}.jar")
 	file(MAKE_DIRECTORY ${CLASS_OUTPUT_PATH})
 	add_custom_command(TARGET ${SWIG_MODULE_OgreJNI_REAL_NAME} POST_BUILD
-    	COMMAND "${Java_JAVAC_EXECUTABLE}" -d ${CLASS_OUTPUT_PATH} "${OGRE_BINARY_DIR}/java/src/org/Ogre/*.java" 
+    	COMMAND "${Java_JAVAC_EXECUTABLE}" -d ${CLASS_OUTPUT_PATH} "${PROJECT_BINARY_DIR}/java/src/org/ogre/*.java"
 		COMMAND "${Java_JAR_EXECUTABLE}" cf ${JAR_NAME} -C ${CLASS_OUTPUT_PATH} .
-	)
+    )
+
+    install(FILES ${JAR_NAME} DESTINATION share/java/)
+    ogre_install_target(${SWIG_MODULE_OgreJNI_REAL_NAME} "" FALSE)
 endif()
 
 if(ANDROID)

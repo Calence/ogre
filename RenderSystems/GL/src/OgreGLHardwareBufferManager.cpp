@@ -106,29 +106,10 @@ namespace Ogre {
         return RenderToVertexBufferSharedPtr(new GLRenderToVertexBuffer);
     }
     //---------------------------------------------------------------------
-    HardwareUniformBufferSharedPtr 
-        GLHardwareBufferManager::createUniformBuffer(size_t sizeBytes, HardwareBuffer::Usage usage,bool useShadowBuffer, const String& name)
-    {
-        OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR, 
-                    "Uniform buffers not supported in OpenGL RenderSystem.",
-                    "GLHardwareBufferManager::createUniformBuffer");
-    }
-    HardwareCounterBufferSharedPtr
-        GLHardwareBufferManager::createCounterBuffer(size_t sizeBytes,
-                                                         HardwareBuffer::Usage usage,
-                                                         bool useShadowBuffer, const String& name)
-    {
-        OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR,
-                    "Counter buffers not supported in OpenGL RenderSystem.",
-                    "GLHardwareBufferManager::createCounterBuffer");
-    }
-
-    //---------------------------------------------------------------------
     GLenum GLHardwareBufferManager::getGLUsage(unsigned int usage)
     {
-        return  (usage & HardwareBuffer::HBU_DISCARDABLE) ? GL_STREAM_DRAW_ARB :
-                (usage & HardwareBuffer::HBU_STATIC) ? GL_STATIC_DRAW_ARB :
-                GL_DYNAMIC_DRAW_ARB;
+        return (usage == HBU_GPU_TO_CPU) ? GL_STATIC_READ
+                                         : (usage == HBU_GPU_ONLY) ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
     }
     //---------------------------------------------------------------------
     GLenum GLHardwareBufferManager::getGLType(unsigned int type)

@@ -59,9 +59,8 @@ SubRenderState* SGScriptTranslator::getGeneratedSubRenderState(const String& typ
     if (mGeneratedRenderState)
     {
         /** Get the list of the template sub render states composing this render state. */
-        const SubRenderStateList& rsList =
-            mGeneratedRenderState->getTemplateSubRenderStateList();
-        
+        const SubRenderStateList& rsList = mGeneratedRenderState->getSubRenderStates();
+
         SubRenderStateList::const_iterator it = rsList.begin();
         SubRenderStateList::const_iterator itEnd = rsList.end();
         for(; it != itEnd; ++it)
@@ -102,8 +101,7 @@ void SGScriptTranslator::translateTextureUnit(ScriptCompiler* compiler, const Ab
     if (techniqueCreated == false)
     {
         // Create the shader based technique.
-        techniqueCreated = shaderGenerator->createShaderBasedTechnique(*material,
-            technique->getSchemeName(), 
+        techniqueCreated = shaderGenerator->createShaderBasedTechnique(technique, 
             dstTechniqueSchemeName,
             shaderGenerator->getCreateShaderOverProgrammablePass());
     }
@@ -129,6 +127,10 @@ void SGScriptTranslator::translateTextureUnit(ScriptCompiler* compiler, const Ab
                 {
                     addSubRenderState(subRenderState, dstTechniqueSchemeName, material->getName(), 
                         material->getGroup(), pass->getIndex());
+                }
+                else
+                {
+                    compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line, prop->name);
                 }
             }
             else
@@ -159,8 +161,7 @@ void SGScriptTranslator::translatePass(ScriptCompiler* compiler, const AbstractN
 
 
     // Create the shader based technique.
-    techniqueCreated = shaderGenerator->createShaderBasedTechnique(*material,
-        technique->getSchemeName(), 
+    techniqueCreated = shaderGenerator->createShaderBasedTechnique(technique, 
         dstTechniqueSchemeName,
         shaderGenerator->getCreateShaderOverProgrammablePass());
 
@@ -191,7 +192,7 @@ void SGScriptTranslator::translatePass(ScriptCompiler* compiler, const AbstractN
                             RenderState* renderState = shaderGenerator->getRenderState(dstTechniqueSchemeName, 
                                 material->getName(), material->getGroup(), pass->getIndex());
 
-                            renderState->setLightCount(lightCount.data());
+                            renderState->setLightCount(Vector3i(lightCount.data()));
                             renderState->setLightCountAutoUpdate(false);
                         }
                         else
@@ -208,6 +209,10 @@ void SGScriptTranslator::translatePass(ScriptCompiler* compiler, const AbstractN
                     if (subRenderState)
                     {
                         addSubRenderState(subRenderState, dstTechniqueSchemeName, material->getName(), material->getGroup(), pass->getIndex());
+                    }
+                    else
+                    {
+                        compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line, prop->name);
                     }
                 }               
             }

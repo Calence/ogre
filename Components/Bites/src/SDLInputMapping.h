@@ -36,6 +36,7 @@ namespace {
             out.button.x = in.button.x;
             out.button.y = in.button.y;
             out.button.button = in.button.button;
+            out.button.clicks = in.button.clicks;
             break;
         case SDL_MOUSEWHEEL:
             out.type = OgreBites::MOUSEWHEEL;
@@ -64,6 +65,10 @@ namespace {
             out.tfinger.dx = in.tfinger.dx;
             out.tfinger.dy = in.tfinger.dy;
             out.tfinger.fingerId = in.tfinger.fingerId;
+            break;
+        case SDL_TEXTINPUT:
+            out.type = OgreBites::TEXTINPUT;
+            out.text.chars = in.text.text;
             break;
         }
 

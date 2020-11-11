@@ -122,7 +122,7 @@ namespace Ogre
         void refreshD3DSettings();
         void refreshFSAAOptions();
         
-        void setD3D9Light( size_t index, Light* light );
+        void setD3D9Light( size_t index, bool enabled);
         
         // state management methods, very primitive !!!
         HRESULT __SetRenderState(D3DRENDERSTATETYPE state, DWORD value);
@@ -161,7 +161,7 @@ namespace Ogre
         virtual void initialiseFromRenderSystemCapabilities(RenderSystemCapabilities* caps, RenderTarget* primary);
 
 
-        void convertVertexShaderCaps(RenderSystemCapabilities* rsc) const;
+        void convertVertexShaderCaps(RenderSystemCapabilities* rsc);
         void convertPixelShaderCaps(RenderSystemCapabilities* rsc) const;
         bool checkVertexTextureFormats(D3D9RenderWindow* renderWindow) const;
         void detachRenderTargetImpl(const String& name);
@@ -188,7 +188,10 @@ namespace Ogre
 #endif
 
     protected:
-        void setClipPlanesImpl(const PlaneList& clipPlanes);        
+        void setClipPlanesImpl(const PlaneList& clipPlanes);
+        void setWorldMatrix( const Matrix4 &m );
+        void setViewMatrix( const Matrix4 &m );
+        void setProjectionMatrix( const Matrix4 &m );
     public:
         // constructor
         D3D9RenderSystem( HINSTANCE hInstance );
@@ -197,17 +200,16 @@ namespace Ogre
 
         virtual void initConfigOptions();
 
+        const GpuProgramParametersPtr& getFixedFunctionParams(TrackVertexColourType tracking, FogMode fog);
+        void applyFixedFunctionParams(const GpuProgramParametersPtr& params, uint16 variabilityMask);
+
         // Overridden RenderSystem functions
         String validateConfigOptions();
-        RenderWindow* _initialise( bool autoCreateWindow, const String& windowTitle = "OGRE Render Window"  );
+        void _initialise() override;
         /// @copydoc RenderSystem::_createRenderWindow
         RenderWindow* _createRenderWindow(const String &name, unsigned int width, unsigned int height, 
             bool fullScreen, const NameValuePairList *miscParams = 0);
         
-        /// @copydoc RenderSystem::_createRenderWindows
-        bool _createRenderWindows(const RenderWindowDescriptionList& renderWindowDescriptions, 
-            RenderWindowList& createdWindows);
-
         /// @copydoc RenderSystem::_createDepthBufferFor
         DepthBuffer* _createDepthBufferFor( RenderTarget *renderTarget );
 
@@ -255,7 +257,6 @@ namespace Ogre
 
         // Low-level overridden members
         void setConfigOption( const String &name, const String &value );
-        void reinitialise();
         void shutdown();
         void setAmbientLight( float r, float g, float b );
         void setShadingType( ShadeOptions so );
@@ -273,15 +274,11 @@ namespace Ogre
         void setNormaliseNormals(bool normalise);
 
         // Low-level overridden members, mainly for internal use
-        void _useLights(const LightList& lights, unsigned short limit);
-        void _setWorldMatrix( const Matrix4 &m );
-        void _setViewMatrix( const Matrix4 &m );
-        void _setProjectionMatrix( const Matrix4 &m );
-        void _setSurfaceParams( const ColourValue &ambient, const ColourValue &diffuse, const ColourValue &specular, const ColourValue &emissive, Real shininess, TrackVertexColourType tracking );
+        void _useLights(unsigned short limit);
+        void _setSurfaceTracking( TrackVertexColourType tracking );
         void _setPointSpritesEnabled(bool enabled);
-        void _setPointParameters(Real size, bool attenuationEnabled, 
-            Real constant, Real linear, Real quadratic, Real minSize, Real maxSize);
-        void _setTexture(size_t unit, bool enabled, const TexturePtr &texPtr);
+        void _setPointParameters(bool attenuationEnabled, Real minSize, Real maxSize);
+        void _setTexture(size_t unit, bool enabled, const TexturePtr& texPtr);
         void _setSampler(size_t unit, Sampler& sampler);
         void _setVertexTexture(size_t unit, const TexturePtr& tex);
         void _disableTextureUnit(size_t texUnit);
@@ -290,10 +287,7 @@ namespace Ogre
             const Frustum* frustum = 0);
         void _setTextureBlendMode( size_t unit, const LayerBlendModeEx& bm );
         void _setTextureAddressingMode(size_t stage, const Sampler::UVWAddressingMode& uvw);
-        void _setTextureBorderColour(size_t stage, const ColourValue& colour);
-        void _setTextureMipmapBias(size_t unit, float bias);
         void _setTextureMatrix( size_t unit, const Matrix4 &xform );
-        void _setSeparateSceneBlending( SceneBlendFactor sourceFactor, SceneBlendFactor destFactor, SceneBlendFactor sourceFactorAlpha, SceneBlendFactor destFactorAlpha, SceneBlendOperation op, SceneBlendOperation alphaOp );
         void _setAlphaRejectSettings( CompareFunction func, unsigned char value, bool alphaToCoverage );
         void _setViewport( Viewport *vp );      
         void _beginFrame();
@@ -303,26 +297,15 @@ namespace Ogre
         void _setCullingMode( CullingMode mode );
         void _setDepthBufferParams( bool depthTest = true, bool depthWrite = true, CompareFunction depthFunction = CMPF_LESS_EQUAL );
         void _setDepthBufferCheckEnabled( bool enabled = true );
-        void _setColourBufferWriteEnabled(bool red, bool green, bool blue, bool alpha);
+        void setColourBlendState(const ColourBlendState& state);
         void _setDepthBufferWriteEnabled(bool enabled = true);
         void _setDepthBufferFunction( CompareFunction func = CMPF_LESS_EQUAL );
         void _setDepthBias(float constantBias, float slopeScaleBias);
-        void _setFog( FogMode mode = FOG_NONE, const ColourValue& colour = ColourValue::White, Real expDensity = 1.0, Real linearStart = 0.0, Real linearEnd = 1.0 );
+        void _setFog( FogMode mode);
         void _convertProjectionMatrix(const Matrix4& matrix,
             Matrix4& dest, bool forGpuProgram = false);
-        void _makeProjectionMatrix(const Radian& fovy, Real aspect, Real nearPlane, Real farPlane, 
-            Matrix4& dest, bool forGpuProgram = false);
-        void _makeProjectionMatrix(Real left, Real right, Real bottom, Real top, Real nearPlane, 
-            Real farPlane, Matrix4& dest, bool forGpuProgram = false);
-        void _makeOrthoMatrix(const Radian& fovy, Real aspect, Real nearPlane, Real farPlane, 
-            Matrix4& dest, bool forGpuProgram = false);
-        void _applyObliqueDepthProjection(Matrix4& matrix, const Plane& plane, 
-            bool forGpuProgram);
         void _setPolygonMode(PolygonMode level);
         void _setTextureUnitFiltering(size_t unit, FilterType ftype, FilterOptions filter);
-        void _setTextureUnitCompareFunction(size_t unit, CompareFunction function);
-        void _setTextureUnitCompareEnabled(size_t unit, bool compare);
-        void _setTextureLayerAnisotropy(size_t unit, unsigned int maxAnisotropy);
         void setVertexDeclaration(VertexDeclaration* decl);
         void setVertexDeclaration(VertexDeclaration* decl, bool useGlobalInstancingVertexBufferIsAvailable);
         void setVertexBufferBinding(VertexBufferBinding* binding);
@@ -334,10 +317,9 @@ namespace Ogre
         void unbindGpuProgram(GpuProgramType gptype);
 
         void bindGpuProgramParameters(GpuProgramType gptype, 
-            GpuProgramParametersSharedPtr params, uint16 variabilityMask);
-        void bindGpuProgramPassIterationParameters(GpuProgramType gptype);
+            const GpuProgramParametersPtr& params, uint16 variabilityMask);
 
-        void setScissorTest(bool enabled, size_t left = 0, size_t top = 0, size_t right = 800, size_t bottom = 600);
+        void setScissorTest(bool enabled, const Rect& rect = Rect());
         void clearFrameBuffer(unsigned int buffers, 
             const ColourValue& colour = ColourValue::Black, 
             Real depth = 1.0f, unsigned short stencil = 0);
@@ -372,6 +354,8 @@ namespace Ogre
         static IDirect3DDevice9* getActiveD3D9Device();
         static IDirect3DDevice9* getActiveD3D9DeviceIfExists();
 
+        uint32 getAdapterNumber();
+
         /** Check which depthStencil formats can be used with a certain pixel format,
             and return the best suited.
         */
@@ -388,8 +372,6 @@ namespace Ogre
 
         /// @copydoc RenderSystem::getDisplayMonitorCount
         unsigned int getDisplayMonitorCount() const;
-        /// @copydoc RenderSystem::hasAnisotropicMipMapFilter
-        virtual bool hasAnisotropicMipMapFilter() const { return false; }   
 
         /// @copydoc RenderSystem::beginProfileEvent
         virtual void beginProfileEvent( const String &eventName );

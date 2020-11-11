@@ -33,12 +33,8 @@ THE SOFTWARE
 #include <memory>
 
 namespace Ogre {
-    // Define ogre version
-    #define OGRE_VERSION_MAJOR 1
-    #define OGRE_VERSION_MINOR 11
-    #define OGRE_VERSION_PATCH 3
-    #define OGRE_VERSION_SUFFIX ""
-    #define OGRE_VERSION_NAME "Rhagorthua"
+    #define OGRE_TOKEN_PASTE_INNER(x, y) x ## y
+    #define OGRE_TOKEN_PASTE(x, y) OGRE_TOKEN_PASTE_INNER(x, y)
 
     #define OGRE_VERSION    ((OGRE_VERSION_MAJOR << 16) | (OGRE_VERSION_MINOR << 8) | OGRE_VERSION_PATCH)
 
@@ -64,7 +60,6 @@ namespace Ogre {
     #define OGRE_HashSet ::std::unordered_set
     /// @deprecated
     #define OGRE_HashMultiSet ::std::unordered_multiset
-
 
     /** In order to avoid finger-aches :)
     */
@@ -102,6 +97,7 @@ namespace Ogre {
     class ControllerManager;
     template <typename T> class ControllerValue;
     class DataStream;
+    class DebugDrawer;
     class DefaultWorkQueue;
     class Degree;
     class DepthBuffer;
@@ -122,7 +118,7 @@ namespace Ogre {
     class GpuProgram;
     class GpuProgramManager;
     class GpuProgramUsage;
-    class HardwareCounterBuffer;
+    class HardwareBuffer;
     class HardwareIndexBuffer;
     class HardwareOcclusionQuery;
     class HardwareUniformBuffer;
@@ -229,7 +225,6 @@ namespace Ogre {
     class ShadowCameraSetup;
     class ShadowCaster;
     class ShadowRenderable;
-    class ShadowTextureManager;
     class SimpleRenderable;
     class SimpleSpline;
     class Skeleton;
@@ -259,6 +254,7 @@ namespace Ogre {
     typedef Vector<3, Real> Vector3;
     typedef Vector<3, int> Vector3i;
     typedef Vector<4, Real> Vector4;
+    typedef Vector<4, float> Vector4f;
     class Viewport;
     class VertexAnimationTrack;
     class VertexBufferBinding;
@@ -288,11 +284,13 @@ namespace Ogre {
     typedef SharedPtr<GpuNamedConstants> GpuNamedConstantsPtr;
     typedef SharedPtr<GpuLogicalBufferStruct> GpuLogicalBufferStructPtr;
     typedef SharedPtr<GpuSharedParameters> GpuSharedParametersPtr;
-    typedef SharedPtr<GpuProgramParameters> GpuProgramParametersSharedPtr;
-    typedef SharedPtr<HardwareCounterBuffer> HardwareCounterBufferSharedPtr;
+    typedef SharedPtr<GpuProgramParameters> GpuProgramParametersPtr;
+    typedef GpuProgramParametersPtr GpuProgramParametersSharedPtr; //!< @deprecated
+    typedef SharedPtr<HardwareBuffer> HardwareBufferPtr;
     typedef SharedPtr<HardwareIndexBuffer> HardwareIndexBufferSharedPtr;
     typedef SharedPtr<HardwarePixelBuffer> HardwarePixelBufferSharedPtr;
     typedef SharedPtr<HardwareUniformBuffer> HardwareUniformBufferSharedPtr;
+    typedef HardwareUniformBufferSharedPtr HardwareCounterBufferSharedPtr;
     typedef SharedPtr<HardwareVertexBuffer> HardwareVertexBufferSharedPtr;
     typedef SharedPtr<HighLevelGpuProgram> HighLevelGpuProgramPtr;
     typedef SharedPtr<Material> MaterialPtr;
@@ -315,6 +313,9 @@ settings have been made.
 
 namespace Ogre
 {
+    /// @deprecated use std::atomic
+    template<class T> using AtomicScalar = std::atomic<T>;
+
     typedef std::string _StringBase;
     typedef std::basic_stringstream<char,std::char_traits<char>,std::allocator<char> > _StringStreamBase;
 

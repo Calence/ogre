@@ -110,6 +110,8 @@ namespace Ogre {
         
         bindVerticesOutput(r2vbPass);
 
+        r2vbPass->_updateAutoParams(sceneMgr->_getAutoParamDataSource(), GPV_GLOBAL);
+
         RenderOperation renderOp;
         size_t targetBufferIndex;
         if (mResetRequested || mResetsEveryUpdate)
@@ -152,9 +154,6 @@ namespace Ogre {
 
         RenderSystem* targetRenderSystem = Root::getSingleton().getRenderSystem();
         // Draw the object
-        targetRenderSystem->_setWorldMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setViewMatrix(Matrix4::IDENTITY);
-        targetRenderSystem->_setProjectionMatrix(Matrix4::IDENTITY);
         if (r2vbPass->hasVertexProgram())
         {
             targetRenderSystem->bindGpuProgramParameters(GPT_VERTEX_PROGRAM, 
